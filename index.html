@@ -12,6 +12,10 @@
 <body class="bg-gray-50">
     <div id="root"></div>
 
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <script type="text/babel">
         const { useState, useMemo } = React;
 
@@ -28,9 +32,11 @@
                 aiml: 2.0,
                 coreBI: 1.0,
                 dataPlatform: 1.5,
+                governance: 1.3,
                 devEx: 1.2,
                 operations: 1.0,
-                cost: 0.8
+                cost: 0.8,
+                product: 1.0
             });
 
             const weightDefinitions = {
@@ -67,7 +73,9 @@
                         { name: "Layout Control & Design", weight: 3, db: '', qlik: '', notes: "Grid-based vs flexible canvas in Qlik" },
                         { name: "Multi-level Visual Containers", weight: 3, db: '', qlik: '', notes: "Cannot create nested container hierarchies in DB" },
                         { name: "Thematics/Styling", weight: 3, db: '', qlik: '', notes: "Standard themes, limited customization vs Qlik" },
-                        { name: "Summary Tables/Scoreboards", weight: 3, db: '', qlik: '', notes: "Aggregated views and KPI displays" }
+                        { name: "Summary Tables/Scoreboards", weight: 3, db: '', qlik: '', notes: "Aggregated views and KPI displays" },
+                        { name: "Accessibility", weight: 3, db: '', qlik: '', notes: "Keyboard navigation, screen readers, WCAG compliance" },
+                        { name: "Mobile Responsiveness", weight: 3, db: '', qlik: '', notes: "Dashboard usability on mobile devices" }
                     ]
                 },
                 {
@@ -76,11 +84,21 @@
                     items: [
                         { name: "Batch/Daily Data Refresh", weight: 3, db: '', qlik: '', notes: "Simplified pipeline refresh, native orchestration" },
                         { name: "Data Governance (Unity Catalog)", weight: 3, db: '', qlik: '', notes: "Centralized governance, fine-grained access control" },
-                        { name: "Row-Level Security & Access Control", weight: 3, db: '', qlik: '', notes: "Fine-grained data access, RLS capabilities" },
                         { name: "Concurrency/Scalability", weight: 3, db: '', qlik: '', notes: "Load testing discussions needed" },
                         { name: "Query Performance at Scale", weight: 3, db: '', qlik: '', notes: "Dashboard speed with large datasets" },
                         { name: "Real-time Data Refresh", weight: 3, db: '', qlik: '', notes: "Streaming and near-real-time capabilities" },
-                        { name: "Data Lineage & Observability", weight: 3, db: '', qlik: '', notes: "Built-in lineage tracking in Unity Catalog" }
+                        { name: "Data Lineage & Observability", weight: 3, db: '', qlik: '', notes: "Built-in lineage tracking" }
+                    ]
+                },
+                {
+                    name: "Governance & Security",
+                    key: "governance",
+                    items: [
+                        { name: "Row-Level Security & Access Control", weight: 3, db: '', qlik: '', notes: "Fine-grained data access, RLS capabilities" },
+                        { name: "Auditability & Lineage", weight: 3, db: '', qlik: '', notes: "Audit logs, data lineage tracking" },
+                        { name: "Data Residency & Encryption", weight: 3, db: '', qlik: '', notes: "Data location control, encryption at rest/in transit" },
+                        { name: "Cross-tenant Isolation", weight: 3, db: '', qlik: '', notes: "Workspace isolation, data separation" },
+                        { name: "Export/Print/Email Governance", weight: 3, db: '', qlik: '', notes: "Control over data distribution and sharing" }
                     ]
                 },
                 {
@@ -88,9 +106,9 @@
                     key: "devEx",
                     items: [
                         { name: "CI/CD & Version Control", weight: 3, db: '', qlik: '', notes: "Git-native, code-based approach vs XML exports" },
-                        { name: "Time to Production v1", weight: 3, db: '', qlik: '', notes: "Qlik faster for initial BI deliverables" },
-                        { name: "Time to Production v2+", weight: 3, db: '', qlik: '', notes: "Similar velocity for iterations" },
-                        { name: "Documentation & Support", weight: 3, db: '', qlik: '', notes: "Both struggle with complex issues" },
+                        { name: "Time to Production", weight: 3, db: '', qlik: '', notes: "Speed to deliver initial production deployment" },
+                        { name: "Feature Velocity", weight: 3, db: '', qlik: '', notes: "Speed of iterating and adding features post-launch" },
+                        { name: "Documentation & Support", weight: 3, db: '', qlik: '', notes: "Quality of docs, community, and vendor support" },
                         { name: "Code Reusability", weight: 3, db: '', qlik: '', notes: "Modular notebooks, shared libraries" }
                     ]
                 },
@@ -103,17 +121,30 @@
                         { name: "User Authentication & SSO", weight: 3, db: '', qlik: '', notes: "Unity Catalog integration tested" },
                         { name: "Export Capabilities", weight: 3, db: '', qlik: '', notes: "Standard formats, Qlik has more options" },
                         { name: "Multi-tenancy Support", weight: 3, db: '', qlik: '', notes: "Workspace isolation capabilities" },
-                        { name: "Monitoring & Observability", weight: 3, db: '', qlik: '', notes: "Built-in monitoring, query profiling" }
+                        { name: "Monitoring & Observability", weight: 3, db: '', qlik: '', notes: "Built-in monitoring, query profiling" },
+                        { name: "SLA/Latency Guarantees", weight: 3, db: '', qlik: '', notes: "Service level commitments and performance SLAs" },
+                        { name: "Run-time Limits & Thresholds", weight: 3, db: '', qlik: '', notes: "Query timeouts, resource limits" },
+                        { name: "Maintenance/Version Management", weight: 3, db: '', qlik: '', notes: "Patching, upgrades, version control" }
                     ]
                 },
                 {
                     name: "Cost & Resources",
                     key: "cost",
                     items: [
-                        { name: "12-month Team Resourcing", weight: 3, db: '', qlik: '', notes: "Current team can execute v1 with either platform" },
-                        { name: "2-3 Year Team Resourcing", weight: 3, db: '', qlik: '', notes: "DB requires ML engineers we don't have; Qlik leverages existing BI skills" },
+                        { name: "Platform Skill Footprint", weight: 3, db: '', qlik: '', notes: "Team skills needed to build and maintain solution" },
                         { name: "Cost Predictability", weight: 3, db: '', qlik: '', notes: "Compute-based pricing vs seat-based" },
-                        { name: "Raw Cost Savings", weight: 3, db: '', qlik: '', notes: "Potential for lower costs with DB at scale" }
+                        { name: "Raw Cost Savings", weight: 3, db: '', qlik: '', notes: "Potential for lower costs at scale" },
+                        { name: "Custom UI Development/Maintenance", weight: 3, db: '', qlik: '', notes: "Cost of building and maintaining custom interfaces" },
+                        { name: "License Model Fit & Simplicity", weight: 3, db: '', qlik: '', notes: "CFO-friendly licensing, ease of understanding costs" }
+                    ]
+                },
+                {
+                    name: "Product & Market",
+                    key: "product",
+                    items: [
+                        { name: "Product Vision Alignment", weight: 3, db: '', qlik: '', notes: "Long-term product roadmap alignment with needs" },
+                        { name: "Product Momentum", weight: 3, db: '', qlik: '', notes: "Market adoption, innovation velocity, ecosystem growth" },
+                        { name: "Hireability", weight: 3, db: '', qlik: '', notes: "Ability to hire talent with platform expertise" }
                     ]
                 }
             ]);
@@ -254,7 +285,7 @@
                                 Submit Response
                             </button>
                         </div>
-                        <p className="text-gray-600 mb-4">Quantitative Assessment Framework</p>
+                        <p className="text-gray-600 mb-4">Quantitative assessment framework focused on long-term AI/ML vision</p>
                         
                         <div className="grid grid-cols-2 gap-6 mb-6">
                             <div className="bg-blue-50 p-4 rounded-lg border-2" style={{borderColor: '#2563EB'}}>
@@ -276,6 +307,7 @@
                                     {[
                                         { key: 'aiml', label: 'AI/ML Capabilities' },
                                         { key: 'dataPlatform', label: 'Data Platform' },
+                                        { key: 'governance', label: 'Governance & Security' },
                                         { key: 'operations', label: 'Operations' }
                                     ].map(({ key, label }) => (
                                         <div key={key} className="flex items-center gap-2">
@@ -295,7 +327,8 @@
                                     {[
                                         { key: 'coreBI', label: 'Core BI' },
                                         { key: 'devEx', label: 'Developer Experience' },
-                                        { key: 'cost', label: 'Cost & Resources' }
+                                        { key: 'cost', label: 'Cost & Resources' },
+                                        { key: 'product', label: 'Product & Market' }
                                     ].map(({ key, label }) => (
                                         <div key={key} className="flex items-center gap-2">
                                             <label className="text-sm text-gray-700 font-medium w-44">{label}</label>
@@ -333,7 +366,7 @@
                                                 <div key={num} className="flex gap-2">
                                                     <span className="font-semibold text-gray-700 w-6">{num}:</span>
                                                     <span className="font-medium text-gray-800">{def.label}</span>
-                                                    <span className="text-gray-600">— {def.description}</span>
+                                                    <span className="text-gray-600">– {def.description}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -430,13 +463,9 @@
                                                         <td className="py-2 px-2 text-center text-xs" style={{color: '#2563EB'}}>{dbWeighted.toFixed(2)}</td>
                                                         <td className="py-2 px-2 text-center text-xs" style={{color: '#1E40AF'}}>{qlikWeighted.toFixed(2)}</td>
                                                         <td className="py-2 px-2">
-                                                            <input
-                                                                type="text"
-                                                                value={item.notes}
-                                                                onChange={(e) => updateScore(catIdx, itemIdx, 'notes', e.target.value)}
-                                                                className="w-full px-2 py-1 text-gray-600 text-xs bg-transparent border-0 rounded"
-                                                                placeholder="Add your notes..."
-                                                            />
+                                                            <div className="text-gray-600 text-xs whitespace-normal">
+                                                                {item.notes}
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 );
@@ -605,9 +634,5 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<EvaluationFramework />);
     </script>
-
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </body>
 </html>

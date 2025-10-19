@@ -149,15 +149,33 @@
                 }
             ]);
 
-            const updateScore = (catIdx, itemIdx, field, value) => {
+            // ---- helpers & safe setters (added) ----
+            const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+            const clampInt = (v, lo, hi) => Math.round(clamp(v, lo, hi));
+
+            const updateScore = (catIdx, itemIdx, field, raw) => {
                 const newCategories = [...categories];
-                newCategories[catIdx].items[itemIdx][field] = value;
+                const item = { ...newCategories[catIdx].items[itemIdx] };
+
+                if (field === 'weight') {
+                    const v = Number(raw);
+                    item.weight = Number.isFinite(v) ? clampInt(v, 1, 5) : 1;
+                } else if (field === 'db' || field === 'qlik') {
+                    const v = Number(raw);
+                    item[field] = Number.isFinite(v) ? clamp(v, 0, 10) : 0;
+                } else {
+                    item[field] = raw;
+                }
+
+                newCategories[catIdx].items[itemIdx] = item;
                 setCategories(newCategories);
             };
 
             const updateMetaWeight = (key, value) => {
-                setMetaWeights({...metaWeights, [key]: parseFloat(value) || 0});
+                const v = Number(value);
+                setMetaWeights(prev => ({ ...prev, [key]: Number.isFinite(v) ? Math.max(0, v) : 0 }));
             };
+            // ---- end helpers ----
 
             const handleSubmit = async () => {
                 if (!submitterName || !submitterEmail) {
@@ -233,16 +251,21 @@
                 let totalEffectiveWeight = 0;
 
                 const categoryResults = categories.map(category => {
-                    const categoryMultiplier = metaWeights[category.key];
-                    const sumOfWeights = category.items.reduce((sum, item) => sum + item.weight, 0);
-                    
+                    const categoryMultiplier = Math.max(0, Number(metaWeights[category.key]) || 0);
+                    const sumOfWeights = category.items.reduce(
+                        (sum, item) => sum + (Number(item.weight) || 0), 0
+                    ) || 1; // avoid divide-by-zero
+
                     let categoryWeightedDB = 0;
                     let categoryWeightedQlik = 0;
 
                     category.items.forEach(item => {
-                        const normalizedWeight = (item.weight / sumOfWeights) * categoryMultiplier;
-                        categoryWeightedDB += item.db * normalizedWeight;
-                        categoryWeightedQlik += item.qlik * normalizedWeight;
+                        const w = Number(item.weight) || 0;
+                        const db = Number(item.db) || 0;
+                        const ql = Number(item.qlik) || 0;
+                        const normalizedWeight = (w / sumOfWeights) * categoryMultiplier;
+                        categoryWeightedDB += db * normalizedWeight;
+                        categoryWeightedQlik += ql * normalizedWeight;
                     });
 
                     totalWeightedDB += categoryWeightedDB;
@@ -255,18 +278,20 @@
                         sumOfWeights,
                         weightedDB: categoryWeightedDB,
                         weightedQlik: categoryWeightedQlik,
-                        avgDB: categoryWeightedDB / categoryMultiplier,
-                        avgQlik: categoryWeightedQlik / categoryMultiplier
+                        avgDB: categoryMultiplier ? categoryWeightedDB / categoryMultiplier : 0,
+                        avgQlik: categoryMultiplier ? categoryWeightedQlik / categoryMultiplier : 0
                     };
                 });
+
+                const safeDenom = totalEffectiveWeight || 1;
 
                 return {
                     categories: categoryResults,
                     totalWeightedDB,
                     totalWeightedQlik,
                     totalEffectiveWeight,
-                    finalDB: totalWeightedDB / totalEffectiveWeight,
-                    finalQlik: totalWeightedQlik / totalEffectiveWeight
+                    finalDB: totalWeightedDB / safeDenom,
+                    finalQlik: totalWeightedQlik / safeDenom
                 };
             }, [categories, metaWeights]);
 
@@ -414,11 +439,12 @@
                                         </thead>
                                         <tbody>
                                             {category.items.map((item, itemIdx) => {
-                                                const sumOfWeights = category.items.reduce((sum, i) => sum + i.weight, 0);
+                                                const sumOfWeights = catResult.sumOfWeights; // reuse computed sum
                                                 const normalizedWeight = (item.weight / sumOfWeights) * catResult.multiplier;
-                                                const dbWeighted = item.db * normalizedWeight;
-                                                const qlikWeighted = item.qlik * normalizedWeight;
-                                                const winner = item.db > item.qlik ? 'db' : item.qlik > item.db ? 'qlik' : 'tie';
+                                                const dbWeighted = (Number(item.db) || 0) * normalizedWeight;
+                                                const qlikWeighted = (Number(item.qlik) || 0) * normalizedWeight;
+                                                const winner = (Number(item.db) || 0) > (Number(item.qlik) || 0) ? 'db' :
+                                                               (Number(item.qlik) || 0) > (Number(item.db) || 0) ? 'qlik' : 'tie';
                                                 
                                                 return (
                                                     <tr key={itemIdx} className="border-b border-gray-200 hover:bg-gray-50">
@@ -430,7 +456,7 @@
                                                                     min="1"
                                                                     max="5"
                                                                     value={item.weight}
-                                                                    onChange={(e) => updateScore(catIdx, itemIdx, 'weight', Math.max(1, Math.min(5, parseFloat(e.target.value) || 1)))}
+                                                                    onChange={(e) => updateScore(catIdx, itemIdx, 'weight', e.target.value)}
                                                                     className="w-16 px-2 py-1 text-center text-gray-700 font-semibold border border-gray-300 rounded"
                                                                 />
                                                                 <span className="text-xs text-gray-500">{weightDefinitions[item.weight]?.label}</span>
@@ -443,7 +469,7 @@
                                                                 max="10"
                                                                 step="0.5"
                                                                 value={item.db}
-                                                                onChange={(e) => updateScore(catIdx, itemIdx, 'db', parseFloat(e.target.value) || 0)}
+                                                                onChange={(e) => updateScore(catIdx, itemIdx, 'db', e.target.value)}
                                                                 className={`w-16 px-2 py-1 text-center font-semibold border border-gray-300 rounded ${winner === 'db' ? 'bg-blue-50 border-blue-400' : ''}`}
                                                                 style={{color: winner === 'db' ? '#2563EB' : '#374151'}}
                                                             />
@@ -455,7 +481,7 @@
                                                                 max="10"
                                                                 step="0.5"
                                                                 value={item.qlik}
-                                                                onChange={(e) => updateScore(catIdx, itemIdx, 'qlik', parseFloat(e.target.value) || 0)}
+                                                                onChange={(e) => updateScore(catIdx, itemIdx, 'qlik', e.target.value)}
                                                                 className={`w-16 px-2 py-1 text-center font-semibold border border-gray-300 rounded ${winner === 'qlik' ? 'bg-blue-50 border-blue-400' : ''}`}
                                                                 style={{color: winner === 'qlik' ? '#1E40AF' : '#374151'}}
                                                             />

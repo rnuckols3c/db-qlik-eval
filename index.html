@@ -261,7 +261,7 @@
           const categoryMultiplier = Math.max(0, Number(metaWeights[category.key]) || 0);
           const sumOfWeights = category.items.reduce(
             (sum, item) => sum + (Number(item.weight) || 0), 0
-          ) || 1; // avoid divide-by-zero
+          ) || 1;
 
           let categoryWeightedDB = 0;
           let categoryWeightedQlik = 0;
@@ -383,4 +383,258 @@
                     <h4 className="font-semibold text-gray-900">Item Weight Scale (1–5)</h4>
                     <button onClick={() => setShowWeightGuide(!showWeightGuide)} className="text-xs text-blue-600 hover:text-blue-800">
                       {showWeightGuide ? 'Hide' : 'Show'} Guide
-                    </button
+                    </button>
+                  </div>
+                  {showWeightGuide && (
+                    <div className="space-y-1 text-sm">
+                      {Object.entries(weightDefinitions).map(([num, def]) => (
+                        <div key={num} className="flex gap-2">
+                          <span className="font-semibold text-gray-700 w-6">{num}:</span>
+                          <span className="font-medium text-gray-800">{def.label}</span>
+                          <span className="text-gray-600">– {def.description}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Category tables */}
+          {categories.map((category, catIdx) => {
+            const catResult = results.categories[catIdx];
+            return (
+              <div key={category.key} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">{category.name}</h2>
+                    <p className="text-sm text-gray-600">
+                      Category Multiplier: {catResult.multiplier}× | Item weights sum: {catResult.sumOfWeights}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-gray-600">Category Averages</div>
+                    <div className="flex gap-4 mt-1">
+                      <span className="font-semibold" style={{color: '#2563EB'}}>DB: {catResult.avgDB.toFixed(2)}</span>
+                      <span className="font-semibold" style={{color: '#1E40AF'}}>Qlik: {catResult.avgQlik.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b-2 border-gray-300 bg-gray-50">
+                        <th className="text-left py-2 px-2 font-semibold text-gray-700">Feature</th>
+                        <th className="text-center py-2 px-2 font-semibold text-gray-700">
+                          <div>Weight</div>
+                          <div className="text-xs font-normal text-gray-500">(1–5)</div>
+                        </th>
+                        <th className="text-center py-2 px-2 font-semibold" style={{color: '#2563EB'}}>DB Score</th>
+                        <th className="text-center py-2 px-2 font-semibold" style={{color: '#1E40AF'}}>Qlik Score</th>
+                        <th className="text-center py-2 px-2 font-semibold" style={{color: '#2563EB'}}>DB Wtd</th>
+                        <th className="text-center py-2 px-2 font-semibold" style={{color: '#1E40AF'}}>Qlik Wtd</th>
+                        <th className="text-left py-2 px-2 font-semibold text-gray-700">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {category.items.map((item, itemIdx) => {
+                        const sumOfWeights = catResult.sumOfWeights;
+                        const normalizedWeight = (item.weight / sumOfWeights) * catResult.multiplier;
+                        const dbWeighted = (Number(item.db) || 0) * normalizedWeight;
+                        const qlikWeighted = (Number(item.qlik) || 0) * normalizedWeight;
+                        const dbNum = Number(item.db) || 0;
+                        const qlNum = Number(item.qlik) || 0;
+                        const winner = dbNum > qlNum ? 'db' : qlNum > dbNum ? 'qlik' : 'tie';
+
+                        return (
+                          <tr key={itemIdx} className="border-b border-gray-200 hover:bg-gray-50">
+                            <td className="py-2 px-2 text-gray-900">{item.name}</td>
+                            <td className="py-2 px-2 text-center">
+                              <div className="flex flex-col items-center gap-1">
+                                <input
+                                  type="number" min="1" max="5" value={item.weight}
+                                  onChange={(e) => updateScore(catIdx, itemIdx, 'weight', e.target.value)}
+                                  className="w-16 px-2 py-1 text-center text-gray-700 font-semibold border border-gray-300 rounded"
+                                />
+                                <span className="text-xs text-gray-500">{weightDefinitions[item.weight]?.label}</span>
+                              </div>
+                            </td>
+                            <td className={`py-2 px-2 text-center ${winner === 'db' ? 'bg-blue-50' : ''}`}>
+                              <input
+                                type="number" min="0" max="10" step="0.5" value={item.db}
+                                onChange={(e) => updateScore(catIdx, itemIdx, 'db', e.target.value)}
+                                className={`w-16 px-2 py-1 text-center font-semibold border border-gray-300 rounded ${winner === 'db' ? 'bg-blue-50 border-blue-400' : ''}`}
+                                style={{color: winner === 'db' ? '#2563EB' : '#374151'}}
+                              />
+                            </td>
+                            <td className={`py-2 px-2 text-center ${winner === 'qlik' ? 'bg-blue-50' : ''}`}>
+                              <input
+                                type="number" min="0" max="10" step="0.5" value={item.qlik}
+                                onChange={(e) => updateScore(catIdx, itemIdx, 'qlik', e.target.value)}
+                                className={`w-16 px-2 py-1 text-center font-semibold border border-gray-300 rounded ${winner === 'qlik' ? 'bg-blue-50 border-blue-400' : ''}`}
+                                style={{color: winner === 'qlik' ? '#1E40AF' : '#374151'}}
+                              />
+                            </td>
+                            <td className="py-2 px-2 text-center text-xs" style={{color: '#2563EB'}}>{dbWeighted.toFixed(2)}</td>
+                            <td className="py-2 px-2 text-center text-xs" style={{color: '#1E40AF'}}>{qlikWeighted.toFixed(2)}</td>
+                            <td className="py-2 px-2">
+                              <div className="text-gray-600 text-xs whitespace-normal">{item.notes}</div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="bg-gray-100 font-semibold">
+                        <td className="py-2 px-2">Category Subtotal</td>
+                        <td className="py-2 px-2 text-center text-gray-600">{catResult.sumOfWeights}</td>
+                        <td className="py-2 px-2 text-center" style={{color: '#2563EB'}}>{catResult.avgDB.toFixed(2)}</td>
+                        <td className="py-2 px-2 text-center" style={{color: '#1E40AF'}}>{catResult.avgQlik.toFixed(2)}</td>
+                        <td className="py-2 px-2 text-center" style={{color: '#2563EB'}}>{catResult.weightedDB.toFixed(2)}</td>
+                        <td className="py-2 px-2 text-center" style={{color: '#1E40AF'}}>{catResult.weightedQlik.toFixed(2)}</td>
+                        <td className="py-2 px-2"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Final Summary */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Final Summary</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b-2 border-gray-300 bg-gray-50">
+                    <th className="text-left py-2 px-4 font-semibold text-gray-700">Category</th>
+                    <th className="text-center py-2 px-4 font-semibold text-gray-700">Multiplier</th>
+                    <th className="text-center py-2 px-4 font-semibold" style={{color: '#2563EB'}}>DB Weighted</th>
+                    <th className="text-center py-2 px-4 font-semibold" style={{color: '#1E40AF'}}>Qlik Weighted</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.categories.map((cat, idx) => (
+                    <tr key={idx} className="border-b border-gray-200">
+                      <td className="py-2 px-4">{cat.category}</td>
+                      <td className="py-2 px-4 text-center">{cat.multiplier.toFixed(1)}×</td>
+                      <td className="py-2 px-4 text-center font-semibold" style={{color: '#2563EB'}}>{cat.weightedDB.toFixed(2)}</td>
+                      <td className="py-2 px-4 text-center font-semibold" style={{color: '#1E40AF'}}>{cat.weightedQlik.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-gray-900 text-white font-bold text-lg">
+                    <td className="py-3 px-4">TOTAL</td>
+                    <td className="py-3 px-4 text-center">{results.totalEffectiveWeight.toFixed(1)}</td>
+                    <td className="py-3 px-4 text-center">{results.totalWeightedDB.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-center">{results.totalWeightedQlik.toFixed(2)}</td>
+                  </tr>
+                  <tr className="bg-gray-50 font-bold text-xl">
+                    <td className="py-3 px-4" colSpan="2">FINAL WEIGHTED AVERAGE (out of 10)</td>
+                    <td className="py-3 px-4 text-center" style={{color: '#2563EB'}}>{results.finalDB.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-center" style={{color: '#1E40AF'}}>{results.finalQlik.toFixed(2)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <h3 className="font-semibold text-gray-900 mb-2">How This Works</h3>
+              <ul className="text-sm text-gray-700 space-y-1">
+                <li>• <strong>Item weights (1–5):</strong> Rate each feature's importance (1=Minimal, 5=Critical)</li>
+                <li>• <strong>Category multipliers:</strong> Adjust strategic priority of entire categories</li>
+                <li>• <strong>Your task:</strong> Score each feature for Databricks vs Qlik (0–10) based on your assessment</li>
+                <li>• <strong>Final score:</strong> Weighted average across all categories, normalized to 0–10 scale</li>
+              </ul>
+            </div>
+
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={() => setShowSubmitModal(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-sm text-lg"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                Submit Response
+              </button>
+            </div>
+          </div>
+
+          {showSubmitModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Submit Your Evaluation</h3>
+
+                {submitSuccess ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                    <p className="text-green-800 font-semibold">✓ Submitted successfully!</p>
+                    <p className="text-green-700 text-sm mt-1">Your evaluation has been sent.</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-gray-600 mb-4">
+                      Enter your details to submit your evaluation scores.
+                    </p>
+
+                    <div className="space-y-4 mb-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Your Name *</label>
+                        <input
+                          type="text" value={submitterName} onChange={(e) => setSubmitterName(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="John Doe"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Your Email *</label>
+                        <input
+                          type="email" value={submitterEmail} onChange={(e) => setSubmitterEmail(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="john@example.com"
+                        />
+                      </div>
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-sm text-blue-900 font-semibold mb-1">Current Scores:</p>
+                        <div className="flex justify-between text-sm">
+                          <span style={{color: '#2563EB'}}>Databricks: {results.finalDB.toFixed(2)}</span>
+                          <span style={{color: '#1E40AF'}}>Qlik: {results.finalQlik.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {submitError && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                        <p className="text-red-800 text-sm">{submitError}</p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => { setShowSubmitModal(false); setSubmitError(''); }}
+                        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold"
+                        disabled={isSubmitting}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSubmit} disabled={isSubmitting}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold disabled:opacity-50"
+                      >
+                        {isSubmitting ? 'Submitting...' : 'Submit'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<EvaluationFramework />);
+  </script>
+</body>
+</html>

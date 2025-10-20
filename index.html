@@ -1,683 +1,639 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Databricks vs Qlik Evaluation</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Databricks vs Qlik Evaluation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
+  </style>
 </head>
 <body class="bg-gray-50">
-    <div id="root"></div>
+  <div id="root"></div>
 
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <script type="text/babel">
-        const { useState, useMemo } = React;
+  <script type="text/babel">
+    const { useState, useMemo } = React;
 
-        function EvaluationFramework() {
-            const [showWeightGuide, setShowWeightGuide] = useState(false);
-            const [showSubmitModal, setShowSubmitModal] = useState(false);
-            const [submitterName, setSubmitterName] = useState('');
-            const [submitterEmail, setSubmitterEmail] = useState('');
-            const [isSubmitting, setIsSubmitting] = useState(false);
-            const [submitSuccess, setSubmitSuccess] = useState(false);
-            const [submitError, setSubmitError] = useState('');
-            
-            // All multipliers set to 1.0 by default
-            const [metaWeights, setMetaWeights] = useState({
-                coreBIAnalytics: 1.0,
-                coreBIViz: 1.0,
-                dataPlatform: 1.0,
-                governance: 1.0,
-                aiml: 1.0,
-                devEx: 1.0,
-                operations: 1.0,
-                cost: 1.0,
-                product: 1.0
-            });
+    function EvaluationFramework() {
+      const [showWeightGuide, setShowWeightGuide] = useState(false);
+      const [showSubmitModal, setShowSubmitModal] = useState(false);
+      const [submitterName, setSubmitterName] = useState('');
+      const [submitterEmail, setSubmitterEmail] = useState('');
+      const [isSubmitting, setIsSubmitting] = useState(false);
+      const [submitSuccess, setSubmitSuccess] = useState(false);
+      const [submitError, setSubmitError] = useState('');
 
-            const weightDefinitions = {
-                1: { label: "Minimal", description: "Nice to have, little impact on decision" },
-                2: { label: "Low", description: "Useful but not critical to success" },
-                3: { label: "Moderate", description: "Important, noticeable impact on outcomes" },
-                4: { label: "High", description: "Very important, significant decision factor" },
-                5: { label: "Critical", description: "Essential feature, major decision driver" }
-            };
+      // All category multipliers default to 1.0
+      const [metaWeights, setMetaWeights] = useState({
+        coreBIAnalytics: 1.0,
+        coreBIViz: 1.0,
+        dataPlatform: 1.0,
+        governance: 1.0,
+        aiml: 1.0,
+        devEx: 1.0,
+        operations: 1.0,
+        cost: 1.0,
+        product: 1.0
+      });
 
-            // Categories reordered per your requested priority
-            const [categories, setCategories] = useState([
-                {
-                    name: "Core BI: Analytics & Interactivity",
-                    key: "coreBIAnalytics",
-                    items: [
-                        { name: "Data Modeling Flexibility", weight: 3, db: '', qlik: '', notes: "Qlik's associative engine vs SQL-based approach" },
-                        { name: "Custom Calculations", weight: 3, db: '', qlik: '', notes: "SQL-based vs function library/set expressions in Qlik" },
-                        { name: "Global Filtering & Interactivity", weight: 3, db: '', qlik: '', notes: "Cross-dashboard filtering" },
-                        { name: "Self-Service Analytics Capabilities", weight: 3, db: '', qlik: '', notes: "Interactivity of Dashboards" },
-                        { name: "Drill-through Navigation", weight: 3, db: '', qlik: '', notes: "Cross-dashboard linking capabilities" },
-                        { name: "Accessibility", weight: 3, db: '', qlik: '', notes: "Keyboard navigation, screen readers, WCAG compliance" }
-                    ]
-                },
-                {
-                    name: "Core BI: Visualization & Design",
-                    key: "coreBIViz",
-                    items: [
-                        { name: "Standard Visualizations", weight: 3, db: '', qlik: '', notes: "Basic charts availability" },
-                        { name: "Layout Control & Design", weight: 3, db: '', qlik: '', notes: "Grid-based vs flexible canvas" },
-                        { name: "Multi-level Visual Containers", weight: 3, db: '', qlik: '', notes: "Nested container hierarchies" },
-                        { name: "Thematics/Styling", weight: 3, db: '', qlik: '', notes: "Standard themes and customization" },
-                        { name: "Summary Tables/Scoreboards", weight: 3, db: '', qlik: '', notes: "Aggregated views and KPI displays" },
-                        { name: "Mobile Responsiveness", weight: 3, db: '', qlik: '', notes: "Dashboard usability on mobile devices" }
-                    ]
-                },
-                {
-                    name: "Data Platform & Architecture",
-                    key: "dataPlatform",
-                    items: [
-                        { name: "Batch/Daily Data Refresh", weight: 3, db: '', qlik: '', notes: "Simplified pipeline refresh, native orchestration" },
-                        { name: "Data Governance", weight: 3, db: '', qlik: '', notes: "Centralized governance, fine-grained access control" },
-                        { name: "Concurrency/Scalability", weight: 3, db: '', qlik: '', notes: "Performance with 25+ users" },
-                        { name: "Query Performance at Scale", weight: 3, db: '', qlik: '', notes: "Dashboard speed with large datasets" },
-                        { name: "Real-time Data Refresh", weight: 3, db: '', qlik: '', notes: "Streaming and near-real-time capabilities" },
-                        { name: "Data Lineage & Observability", weight: 3, db: '', qlik: '', notes: "Built-in lineage tracking" }
-                    ]
-                },
-                {
-                    name: "Governance & Security",
-                    key: "governance",
-                    items: [
-                        { name: "Row-Level Security & Access Control", weight: 3, db: '', qlik: '', notes: "Fine-grained data access, RLS capabilities" },
-                        { name: "Auditability & Lineage", weight: 3, db: '', qlik: '', notes: "Audit logs, data lineage tracking" },
-                        { name: "Data Residency & Encryption", weight: 3, db: '', qlik: '', notes: "Data location control, encryption at rest/in transit" },
-                        { name: "Cross-tenant Isolation", weight: 3, db: '', qlik: '', notes: "Workspace isolation, data separation" },
-                        { name: "Export/Print/Email Governance", weight: 3, db: '', qlik: '', notes: "Control over data distribution and sharing" }
-                    ]
-                },
-                {
-                    name: "AI/ML Capabilities & Future Readiness",
-                    key: "aiml",
-                    items: [
-                        { name: "ML Model Integration", weight: 3, db: '', qlik: '', notes: "Python/ML frameworks, notebooks, MLflow integration" },
-                        { name: "Feature Engineering Pipeline", weight: 3, db: '', qlik: '', notes: "Data preparation and transformation workflows" },
-                        { name: "Advanced Analytics (Statistical/Predictive)", weight: 3, db: '', qlik: '', notes: "Built-in ML capabilities, AutoML" },
-                        { name: "Conversational AI / NLQ", weight: 3, db: '', qlik: '', notes: "Natural-language interface that lets users query and explore data conversationally" },
-                        { name: "Real-time ML Inference", weight: 3, db: '', qlik: '', notes: "Streaming + model serving capabilities" }
-                    ]
-                },
-                {
-                    name: "Developer Experience & Velocity",
-                    key: "devEx",
-                    items: [
-                        { name: "CI/CD & Version Control", weight: 3, db: '', qlik: '', notes: "Git-native, code-based approach vs XML exports" },
-                        { name: "Time to Production", weight: 3, db: '', qlik: '', notes: "Speed to deliver initial production deployment" },
-                        { name: "Feature Velocity", weight: 3, db: '', qlik: '', notes: "Speed of iterating and adding features post-launch" },
-                        { name: "Documentation & Support", weight: 3, db: '', qlik: '', notes: "Quality of docs, community, and vendor support" },
-                        { name: "Code Reusability", weight: 3, db: '', qlik: '', notes: "Modular notebooks, shared libraries" }
-                    ]
-                },
-                {
-                    name: "Operations & Scalability",
-                    key: "operations",
-                    items: [
-                        { name: "iFrame Embedding Capabilities", weight: 3, db: '', qlik: '', notes: "Ability to embed within external applications" },
-                        { name: "Infrastructure/Alerts/DR", weight: 3, db: '', qlik: '', notes: "Enterprise-level features, cloud-native advantage" },
-                        { name: "User Authentication & SSO", weight: 3, db: '', qlik: '', notes: "Support for single sign-on and centralized user authentication" },
-                        { name: "Export Capabilities", weight: 3, db: '', qlik: '', notes: "Support for exporting data and visualizations to files or external tools" },
-                        { name: "Multi-tenancy Support", weight: 3, db: '', qlik: '', notes: "Workspace isolation capabilities" },
-                        { name: "Monitoring & Observability", weight: 3, db: '', qlik: '', notes: "Built-in monitoring, query profiling" },
-                        { name: "SLA/Latency Guarantees", weight: 3, db: '', qlik: '', notes: "Service level commitments and performance SLAs" },
-                        { name: "Run-time Limits & Thresholds", weight: 3, db: '', qlik: '', notes: "Query timeouts, resource limits" },
-                        { name: "Maintenance/Version Management", weight: 3, db: '', qlik: '', notes: "Patching, upgrades, version control" }
-                    ]
-                },
-                {
-                    name: "Cost & Resources",
-                    key: "cost",
-                    items: [
-                        { name: "Platform Skill Footprint", weight: 3, db: '', qlik: '', notes: "Team skills needed to build and maintain solution" },
-                        { name: "Cost Predictability", weight: 3, db: '', qlik: '', notes: "Compute-based pricing vs seat-based" },
-                        { name: "Raw Cost Savings", weight: 3, db: '', qlik: '', notes: "Potential for lower costs at scale" },
-                        { name: "Custom UI Development/Maintenance", weight: 3, db: '', qlik: '', notes: "Cost of building and maintaining custom interfaces" },
-                        { name: "License Model Fit & Simplicity", weight: 3, db: '', qlik: '', notes: "CFO-friendly licensing, ease of understanding costs" }
-                    ]
-                },
-                {
-                    name: "Product & Market",
-                    key: "product",
-                    items: [
-                        { name: "Product Vision Alignment", weight: 3, db: '', qlik: '', notes: "Long-term product roadmap alignment with needs" },
-                        { name: "Product Momentum", weight: 3, db: '', qlik: '', notes: "Market adoption, innovation velocity, ecosystem growth" },
-                        { name: "Hireability", weight: 3, db: '', qlik: '', notes: "Ability to hire talent with platform expertise" }
-                    ]
-                }
-            ]);
+      const weightDefinitions = {
+        1: { label: "Minimal",  description: "Nice to have, little impact on decision" },
+        2: { label: "Low",      description: "Useful but not critical to success" },
+        3: { label: "Moderate", description: "Important, noticeable impact on outcomes" },
+        4: { label: "High",     description: "Very important, significant decision factor" },
+        5: { label: "Critical", description: "Essential feature, major decision driver" }
+      };
 
-            // ---- helpers & safe setters ----
-            const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-            const clampInt = (v, lo, hi) => Math.round(clamp(v, lo, hi));
+      // Ordered per your priority
+      const [categories, setCategories] = useState([
+        {
+          name: "Core BI: Analytics & Interactivity",
+          key: "coreBIAnalytics",
+          items: [
+            { name: "Data Modeling Flexibility",      weight: 3, db: '', qlik: '', notes: "Associative/semantic vs SQL-centric models" },
+            { name: "Custom Calculations",            weight: 3, db: '', qlik: '', notes: "Function breadth, expressions, calc fields" },
+            { name: "Global Filtering & Interactivity",weight: 3, db: '', qlik: '', notes: "Cross-dashboard filtering & interactions" },
+            { name: "Self-Service Analytics",         weight: 3, db: '', qlik: '', notes: "Non-technical users can explore & build" },
+            { name: "Drill-through Navigation",       weight: 3, db: '', qlik: '', notes: "Cross-page linking and drill paths" },
+            { name: "Accessibility",                  weight: 3, db: '', qlik: '', notes: "Keyboard, screen readers, WCAG support" }
+          ]
+        },
+        {
+          name: "Core BI: Visualization & Design",
+          key: "coreBIViz",
+          items: [
+            { name: "Standard Visualizations",         weight: 3, db: '', qlik: '', notes: "Core chart types readily available" },
+            { name: "Layout Control & Design",         weight: 3, db: '', qlik: '', notes: "Grid/canvas flexibility" },
+            { name: "Multi-level Visual Containers",   weight: 3, db: '', qlik: '', notes: "Nested containers / sections" },
+            { name: "Thematics/Styling",               weight: 3, db: '', qlik: '', notes: "Themes, palettes, typography controls" },
+            { name: "Summary Tables/Scoreboards",      weight: 3, db: '', qlik: '', notes: "KPI boards and compact summaries" },
+            { name: "Mobile Responsiveness",           weight: 3, db: '', qlik: '', notes: "Usability across mobile form factors" }
+          ]
+        },
+        {
+          name: "Data Platform & Architecture",
+          key: "dataPlatform",
+          items: [
+            { name: "Batch/Daily Data Refresh",        weight: 3, db: '', qlik: '', notes: "Reliable scheduled refresh & orchestration" },
+            { name: "Data Governance",                 weight: 3, db: '', qlik: '', notes: "Centralized policies & fine-grained access" },
+            { name: "Concurrency/Scalability",         weight: 3, db: '', qlik: '', notes: "Performance with many concurrent users" },
+            { name: "Query Performance at Scale",      weight: 3, db: '', qlik: '', notes: "Large dataset responsiveness" },
+            { name: "Real-time Data Refresh",          weight: 3, db: '', qlik: '', notes: "Streaming / low-latency updates" },
+            { name: "Data Lineage & Observability",    weight: 3, db: '', qlik: '', notes: "End-to-end lineage and monitoring" }
+          ]
+        },
+        {
+          name: "Governance & Security",
+          key: "governance",
+          items: [
+            { name: "Row-Level Security & Access Control", weight: 3, db: '', qlik: '', notes: "Fine-grained authorization" },
+            { name: "Auditability & Lineage",              weight: 3, db: '', qlik: '', notes: "Audit logs and traceability" },
+            { name: "Data Residency & Encryption",         weight: 3, db: '', qlik: '', notes: "At rest/in transit, regional controls" },
+            { name: "Cross-tenant Isolation",              weight: 3, db: '', qlik: '', notes: "Workspace/data isolation" },
+            { name: "Export/Print/Email Governance",       weight: 3, db: '', qlik: '', notes: "Controls for distribution/sharing" }
+          ]
+        },
+        {
+          name: "AI/ML Capabilities & Future Readiness",
+          key: "aiml",
+          items: [
+            { name: "ML Model Integration",            weight: 3, db: '', qlik: '', notes: "Notebooks/languages and model lifecycle hooks" },
+            { name: "Feature Engineering Pipeline",    weight: 3, db: '', qlik: '', notes: "Data prep/transform workflows for ML features" },
+            { name: "Advanced Analytics (Stat/Predictive)", weight: 3, db: '', qlik: '', notes: "Built-in ML/AutoML options" },
+            { name: "Conversational AI / NLQ",         weight: 3, db: '', qlik: '', notes: "Natural-language querying of data" },
+            { name: "Real-time ML Inference",          weight: 3, db: '', qlik: '', notes: "Streaming ingestion + model serving" }
+          ]
+        },
+        {
+          name: "Developer Experience & Velocity",
+          key: "devEx",
+          items: [
+            { name: "CI/CD & Version Control",         weight: 3, db: '', qlik: '', notes: "Git integration & deployment flows" },
+            { name: "Time to Production",              weight: 3, db: '', qlik: '', notes: "Speed to first production release" },
+            { name: "Feature Velocity",                weight: 3, db: '', qlik: '', notes: "Iteration speed post-launch" },
+            { name: "Documentation & Support",         weight: 3, db: '', qlik: '', notes: "Quality of docs/community/vendor support" },
+            { name: "Code Reusability",                weight: 3, db: '', qlik: '', notes: "Modules, shared libs, reusable assets" }
+          ]
+        },
+        {
+          // ✅ streamlined to 6 items
+          name: "Operations & Scalability",
+          key: "operations",
+          items: [
+            { name: "iFrame Embedding Capabilities",   weight: 3, db: '', qlik: '', notes: "Embed securely in external apps" },
+            { name: "User Authentication & SSO",       weight: 3, db: '', qlik: '', notes: "SSO protocols & centralized auth" },
+            { name: "Export Capabilities",             weight: 3, db: '', qlik: '', notes: "Export data/visuals to files/tools" },
+            { name: "Monitoring & Observability",      weight: 3, db: '', qlik: '', notes: "Health metrics & query profiling" },
+            { name: "SLA/Latency Guarantees",          weight: 3, db: '', qlik: '', notes: "Service levels & performance targets" },
+            { name: "Maintenance/Version Management",  weight: 3, db: '', qlik: '', notes: "Upgrades, patching, versioning" }
+          ]
+        },
+        {
+          name: "Cost & Resources",
+          key: "cost",
+          items: [
+            { name: "Platform Skill Footprint",        weight: 3, db: '', qlik: '', notes: "Skills needed to build/operate" },
+            { name: "Cost Predictability",             weight: 3, db: '', qlik: '', notes: "Pricing clarity under usage variance" },
+            { name: "Raw Cost Savings",                weight: 3, db: '', qlik: '', notes: "Total cost at scale" },
+            { name: "Custom UI Dev/Maintenance",       weight: 3, db: '', qlik: '', notes: "Cost of bespoke frontends" },
+            { name: "License Model Fit & Simplicity",  weight: 3, db: '', qlik: '', notes: "Ease for finance & budgeting" }
+          ]
+        },
+        {
+          // ✅ expanded to 5 items
+          name: "Product & Market",
+          key: "product",
+          items: [
+            { name: "Product Vision Alignment",        weight: 3, db: '', qlik: '', notes: "Roadmap fit to long-term needs" },
+            { name: "Product Momentum",                weight: 3, db: '', qlik: '', notes: "Adoption & innovation velocity" },
+            { name: "Hireability",                     weight: 3, db: '', qlik: '', notes: "Availability of skilled talent" },
+            { name: "Ecosystem & Integrations",        weight: 3, db: '', qlik: '', notes: "Connectors & partner marketplace" },
+            { name: "Roadmap Transparency & Release Cadence", weight: 3, db: '', qlik: '', notes: "Clarity of plans & shipping pace" }
+          ]
+        }
+      ]);
 
-            const updateScore = (catIdx, itemIdx, field, raw) => {
-                const newCategories = [...categories];
-                const item = { ...newCategories[catIdx].items[itemIdx] };
+      // ---- helpers & safe setters ----
+      const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+      const clampInt = (v, lo, hi) => Math.round(clamp(v, lo, hi));
 
-                if (field === 'weight') {
-                    const v = Number(raw);
-                    item.weight = Number.isFinite(v) ? clampInt(v, 1, 5) : 1;
-                } else if (field === 'db' || field === 'qlik') {
-                    const v = Number(raw);
-                    item[field] = Number.isFinite(v) ? clamp(v, 0, 10) : 0;
-                } else {
-                    item[field] = raw;
-                }
+      const updateScore = (catIdx, itemIdx, field, raw) => {
+        const newCategories = [...categories];
+        const item = { ...newCategories[catIdx].items[itemIdx] };
 
-                newCategories[catIdx].items[itemIdx] = item;
-                setCategories(newCategories);
-            };
-
-            const updateMetaWeight = (key, value) => {
-                const v = Number(value);
-                setMetaWeights(prev => ({ ...prev, [key]: Number.isFinite(v) ? Math.max(0, v) : 0 }));
-            };
-            // ---- end helpers ----
-
-            const handleSubmit = async () => {
-                if (!submitterName || !submitterEmail) {
-                    setSubmitError('Please enter your name and email');
-                    return;
-                }
-
-                setIsSubmitting(true);
-                setSubmitError('');
-
-                const submissionData = {
-                    submitter_name: submitterName,
-                    submitter_email: submitterEmail,
-                    submission_date: new Date().toISOString(),
-                    final_scores: {
-                        databricks: results.finalDB.toFixed(2),
-                        qlik: results.finalQlik.toFixed(2)
-                    },
-                    category_multipliers: metaWeights,
-                    category_results: results.categories.map(cat => ({
-                        category: cat.category,
-                        multiplier: cat.multiplier,
-                        databricks_avg: cat.avgDB.toFixed(2),
-                        qlik_avg: cat.avgQlik.toFixed(2),
-                        databricks_weighted: cat.weightedDB.toFixed(2),
-                        qlik_weighted: cat.weightedQlik.toFixed(2)
-                    })),
-                    detailed_scores: categories.map(cat => ({
-                        category: cat.name,
-                        items: cat.items.map(item => ({
-                            feature: item.name,
-                            weight: item.weight,
-                            databricks_score: item.db,
-                            qlik_score: item.qlik,
-                            notes: item.notes
-                        }))
-                    }))
-                };
-
-                try {
-                    const response = await fetch('https://formspree.io/f/xkgqyqeo', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(submissionData)
-                    });
-
-                    const responseData = await response.json();
-
-                    if (response.ok) {
-                        setSubmitSuccess(true);
-                        setTimeout(() => {
-                            setShowSubmitModal(false);
-                            setSubmitSuccess(false);
-                            setSubmitterName('');
-                            setSubmitterEmail('');
-                        }, 2000);
-                    } else {
-                        setSubmitError(`Failed to submit: ${responseData.error || responseData.errors?.[0]?.message || 'Unknown error'}`);
-                    }
-                } catch (error) {
-                    setSubmitError(`Error: ${error.message}`);
-                } finally {
-                    setIsSubmitting(false);
-                }
-            };
-
-            const results = useMemo(() => {
-                let totalWeightedDB = 0;
-                let totalWeightedQlik = 0;
-                let totalEffectiveWeight = 0;
-
-                const categoryResults = categories.map(category => {
-                    const categoryMultiplier = Math.max(0, Number(metaWeights[category.key]) || 0);
-                    const sumOfWeights = category.items.reduce(
-                        (sum, item) => sum + (Number(item.weight) || 0), 0
-                    ) || 1; // avoid divide-by-zero
-
-                    let categoryWeightedDB = 0;
-                    let categoryWeightedQlik = 0;
-
-                    category.items.forEach(item => {
-                        const w = Number(item.weight) || 0;
-                        const db = Number(item.db) || 0;
-                        const ql = Number(item.qlik) || 0;
-                        const normalizedWeight = (w / sumOfWeights) * categoryMultiplier;
-                        categoryWeightedDB += db * normalizedWeight;
-                        categoryWeightedQlik += ql * normalizedWeight;
-                    });
-
-                    totalWeightedDB += categoryWeightedDB;
-                    totalWeightedQlik += categoryWeightedQlik;
-                    totalEffectiveWeight += categoryMultiplier;
-
-                    return {
-                        category: category.name,
-                        multiplier: categoryMultiplier,
-                        sumOfWeights,
-                        weightedDB: categoryWeightedDB,
-                        weightedQlik: categoryWeightedQlik,
-                        avgDB: categoryMultiplier ? categoryWeightedDB / categoryMultiplier : 0,
-                        avgQlik: categoryMultiplier ? categoryWeightedQlik / categoryMultiplier : 0
-                    };
-                });
-
-                const safeDenom = totalEffectiveWeight || 1;
-
-                return {
-                    categories: categoryResults,
-                    totalWeightedDB,
-                    totalWeightedQlik,
-                    totalEffectiveWeight,
-                    finalDB: totalWeightedDB / safeDenom,
-                    finalQlik: totalWeightedQlik / safeDenom
-                };
-            }, [categories, metaWeights]);
-
-            return (
-                <div className="w-full max-w-7xl mx-auto p-6">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                        <div className="flex items-center justify-between mb-2">
-                            <h1 className="text-3xl font-bold text-gray-900">Databricks vs Qlik Evaluation</h1>
-                            <button
-                                onClick={() => setShowSubmitModal(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-sm"
-                            >
-                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                </svg>
-                                Submit Response
-                            </button>
-                        </div>
-                        <p className="text-gray-600 mb-4">Quantitative assessment framework</p>
-                        
-                        <div className="grid grid-cols-2 gap-6 mb-6">
-                            <div className="bg-blue-50 p-4 rounded-lg border-2" style={{borderColor: '#2563EB'}}>
-                                <div className="text-sm text-gray-600 mb-1">Databricks Final Score</div>
-                                <div className="text-4xl font-bold" style={{color: '#2563EB'}}>{results.finalDB.toFixed(2)}</div>
-                                <div className="text-sm text-gray-500 mt-1">out of 10.0</div>
-                            </div>
-                            <div className="bg-blue-50 p-4 rounded-lg border-2" style={{borderColor: '#60A5FA'}}>
-                                <div className="text-sm text-gray-600 mb-1">Qlik Final Score</div>
-                                <div className="text-4xl font-bold" style={{color: '#1E40AF'}}>{results.finalQlik.toFixed(2)}</div>
-                                <div className="text-sm text-gray-500 mt-1">out of 10.0</div>
-                            </div>
-                        </div>
-
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
-                            <h3 className="font-semibold text-gray-700 mb-3">Category Multipliers</h3>
-                            <div className="flex gap-16">
-                                <div className="space-y-2">
-                                    {[
-                                        { key: 'coreBIAnalytics', label: 'Core BI: Analytics & Interactivity' },
-                                        { key: 'coreBIViz', label: 'Core BI: Visualization & Design' },
-                                        { key: 'dataPlatform', label: 'Data Platform & Architecture' },
-                                        { key: 'governance', label: 'Governance & Security' },
-                                        { key: 'aiml', label: 'AI/ML Capabilities & Future Readiness' },
-                                    ].map(({ key, label }) => (
-                                        <div key={key} className="flex items-center gap-2">
-                                            <label className="text-sm text-gray-700 font-medium w-64">{label}</label>
-                                            <input
-                                                type="number"
-                                                step="0.1"
-                                                value={metaWeights[key]}
-                                                onChange={(e) => updateMetaWeight(key, e.target.value)}
-                                                className="w-16 px-2 py-1.5 border border-gray-300 rounded text-sm text-center"
-                                            />
-                                            <span className="text-sm text-gray-500">×</span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="space-y-2">
-                                    {[
-                                        { key: 'devEx', label: 'Developer Experience & Velocity' },
-                                        { key: 'operations', label: 'Operations & Scalability' },
-                                        { key: 'cost', label: 'Cost & Resources' },
-                                        { key: 'product', label: 'Product & Market' },
-                                    ].map(({ key, label }) => (
-                                        <div key={key} className="flex items-center gap-2">
-                                            <label className="text-sm text-gray-700 font-medium w-64">{label}</label>
-                                            <input
-                                                type="number"
-                                                step="0.1"
-                                                value={metaWeights[key]}
-                                                onChange={(e) => updateMetaWeight(key, e.target.value)}
-                                                className="w-16 px-2 py-1.5 border border-gray-300 rounded text-sm text-center"
-                                            />
-                                            <span className="text-sm text-gray-500">×</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Tip block explaining open-ended multipliers */}
-                            <p className="text-sm text-gray-600 mt-4 border-t border-gray-200 pt-3">
-                                <strong>Tip:</strong> Category multipliers express <em>relative importance</em> across domains. 
-                                There are no predefined limits — set any value that reflects your judgment. 
-                                For example: 1.0 = equal weight, 2.0 = twice as important, 10.0 = dominant priority. 
-                                Use them to emphasize what matters most in your evaluation.
-                            </p>
-                        </div>
-
-                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                            <div className="flex items-start gap-3">
-                                <button onClick={() => setShowWeightGuide(!showWeightGuide)} className="flex-shrink-0 mt-0.5">
-                                    <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </button>
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <h4 className="font-semibold text-gray-900">Item Weight Scale (1-5)</h4>
-                                        <button onClick={() => setShowWeightGuide(!showWeightGuide)} className="text-xs text-blue-600 hover:text-blue-800">
-                                            {showWeightGuide ? 'Hide' : 'Show'} Guide
-                                        </button>
-                                    </div>
-                                    {showWeightGuide && (
-                                        <div className="space-y-1 text-sm">
-                                            {Object.entries(weightDefinitions).map(([num, def]) => (
-                                                <div key={num} className="flex gap-2">
-                                                    <span className="font-semibold text-gray-700 w-6">{num}:</span>
-                                                    <span className="font-medium text-gray-800">{def.label}</span>
-                                                    <span className="text-gray-600">– {def.description}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {categories.map((category, catIdx) => {
-                        const catResult = results.categories[catIdx];
-                        return (
-                            <div key={category.key} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <h2 className="text-xl font-bold text-gray-900">{category.name}</h2>
-                                        <p className="text-sm text-gray-600">
-                                            Category Multiplier: {catResult.multiplier}× | Item weights sum: {catResult.sumOfWeights}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-sm text-gray-600">Category Averages</div>
-                                        <div className="flex gap-4 mt-1">
-                                            <span className="font-semibold" style={{color: '#2563EB'}}>DB: {catResult.avgDB.toFixed(2)}</span>
-                                            <span className="font-semibold" style={{color: '#1E40AF'}}>Qlik: {catResult.avgQlik.toFixed(2)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="border-b-2 border-gray-300 bg-gray-50">
-                                                <th className="text-left py-2 px-2 font-semibold text-gray-700">Feature</th>
-                                                <th className="text-center py-2 px-2 font-semibold text-gray-700">
-                                                    <div>Weight</div>
-                                                    <div className="text-xs font-normal text-gray-500">(1-5)</div>
-                                                </th>
-                                                <th className="text-center py-2 px-2 font-semibold" style={{color: '#2563EB'}}>DB Score</th>
-                                                <th className="text-center py-2 px-2 font-semibold" style={{color: '#1E40AF'}}>Qlik Score</th>
-                                                <th className="text-center py-2 px-2 font-semibold" style={{color: '#2563EB'}}>DB Wtd</th>
-                                                <th className="text-center py-2 px-2 font-semibold" style={{color: '#1E40AF'}}>Qlik Wtd</th>
-                                                <th className="text-left py-2 px-2 font-semibold text-gray-700">Notes</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {category.items.map((item, itemIdx) => {
-                                                const sumOfWeights = catResult.sumOfWeights;
-                                                const normalizedWeight = (item.weight / sumOfWeights) * catResult.multiplier;
-                                                const dbWeighted = (Number(item.db) || 0) * normalizedWeight;
-                                                const qlikWeighted = (Number(item.qlik) || 0) * normalizedWeight;
-                                                const dbNum = Number(item.db) || 0;
-                                                const qlNum = Number(item.qlik) || 0;
-                                                const winner = dbNum > qlNum ? 'db' : qlNum > dbNum ? 'qlik' : 'tie';
-                                                
-                                                return (
-                                                    <tr key={itemIdx} className="border-b border-gray-200 hover:bg-gray-50">
-                                                        <td className="py-2 px-2 text-gray-900">{item.name}</td>
-                                                        <td className="py-2 px-2 text-center">
-                                                            <div className="flex flex-col items-center gap-1">
-                                                                <input
-                                                                    type="number"
-                                                                    min="1"
-                                                                    max="5"
-                                                                    value={item.weight}
-                                                                    onChange={(e) => updateScore(catIdx, itemIdx, 'weight', e.target.value)}
-                                                                    className="w-16 px-2 py-1 text-center text-gray-700 font-semibold border border-gray-300 rounded"
-                                                                />
-                                                                <span className="text-xs text-gray-500">{weightDefinitions[item.weight]?.label}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className={`py-2 px-2 text-center ${winner === 'db' ? 'bg-blue-50' : ''}`}>
-                                                            <input
-                                                                type="number"
-                                                                min="0"
-                                                                max="10"
-                                                                step="0.5"
-                                                                value={item.db}
-                                                                onChange={(e) => updateScore(catIdx, itemIdx, 'db', e.target.value)}
-                                                                className={`w-16 px-2 py-1 text-center font-semibold border border-gray-300 rounded ${winner === 'db' ? 'bg-blue-50 border-blue-400' : ''}`}
-                                                                style={{color: winner === 'db' ? '#2563EB' : '#374151'}}
-                                                            />
-                                                        </td>
-                                                        <td className={`py-2 px-2 text-center ${winner === 'qlik' ? 'bg-blue-50' : ''}`}>
-                                                            <input
-                                                                type="number"
-                                                                min="0"
-                                                                max="10"
-                                                                step="0.5"
-                                                                value={item.qlik}
-                                                                onChange={(e) => updateScore(catIdx, itemIdx, 'qlik', e.target.value)}
-                                                                className={`w-16 px-2 py-1 text-center font-semibold border border-gray-300 rounded ${winner === 'qlik' ? 'bg-blue-50 border-blue-400' : ''}`}
-                                                                style={{color: winner === 'qlik' ? '#1E40AF' : '#374151'}}
-                                                            />
-                                                        </td>
-                                                        <td className="py-2 px-2 text-center text-xs" style={{color: '#2563EB'}}>{dbWeighted.toFixed(2)}</td>
-                                                        <td className="py-2 px-2 text-center text-xs" style={{color: '#1E40AF'}}>{qlikWeighted.toFixed(2)}</td>
-                                                        <td className="py-2 px-2">
-                                                            <div className="text-gray-600 text-xs whitespace-normal">
-                                                                {item.notes}
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                            <tr className="bg-gray-100 font-semibold">
-                                                <td className="py-2 px-2">Category Subtotal</td>
-                                                <td className="py-2 px-2 text-center text-gray-600">{catResult.sumOfWeights}</td>
-                                                <td className="py-2 px-2 text-center" style={{color: '#2563EB'}}>{catResult.avgDB.toFixed(2)}</td>
-                                                <td className="py-2 px-2 text-center" style={{color: '#1E40AF'}}>{catResult.avgQlik.toFixed(2)}</td>
-                                                <td className="py-2 px-2 text-center" style={{color: '#2563EB'}}>{catResult.weightedDB.toFixed(2)}</td>
-                                                <td className="py-2 px-2 text-center" style={{color: '#1E40AF'}}>{catResult.weightedQlik.toFixed(2)}</td>
-                                                <td className="py-2 px-2"></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        );
-                    })}
-
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-4">Final Summary</h2>
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="border-b-2 border-gray-300 bg-gray-50">
-                                        <th className="text-left py-2 px-4 font-semibold text-gray-700">Category</th>
-                                        <th className="text-center py-2 px-4 font-semibold text-gray-700">Multiplier</th>
-                                        <th className="text-center py-2 px-4 font-semibold" style={{color: '#2563EB'}}>DB Weighted</th>
-                                        <th className="text-center py-2 px-4 font-semibold" style={{color: '#1E40AF'}}>Qlik Weighted</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {results.categories.map((cat, idx) => (
-                                        <tr key={idx} className="border-b border-gray-200">
-                                            <td className="py-2 px-4">{cat.category}</td>
-                                            <td className="py-2 px-4 text-center">{cat.multiplier.toFixed(1)}×</td>
-                                            <td className="py-2 px-4 text-center font-semibold" style={{color: '#2563EB'}}>{cat.weightedDB.toFixed(2)}</td>
-                                            <td className="py-2 px-4 text-center font-semibold" style={{color: '#1E40AF'}}>{cat.weightedQlik.toFixed(2)}</td>
-                                        </tr>
-                                    ))}
-                                    <tr className="bg-gray-900 text-white font-bold text-lg">
-                                        <td className="py-3 px-4">TOTAL</td>
-                                        <td className="py-3 px-4 text-center">{results.totalEffectiveWeight.toFixed(1)}</td>
-                                        <td className="py-3 px-4 text-center">{results.totalWeightedDB.toFixed(2)}</td>
-                                        <td className="py-3 px-4 text-center">{results.totalWeightedQlik.toFixed(2)}</td>
-                                    </tr>
-                                    <tr className="bg-gray-50 font-bold text-xl">
-                                        <td className="py-3 px-4" colSpan="2">FINAL WEIGHTED AVERAGE (out of 10)</td>
-                                        <td className="py-3 px-4 text-center" style={{color: '#2563EB'}}>{results.finalDB.toFixed(2)}</td>
-                                        <td className="py-3 px-4 text-center" style={{color: '#1E40AF'}}>{results.finalQlik.toFixed(2)}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                            <h3 className="font-semibold text-gray-900 mb-2">How This Works</h3>
-                            <ul className="text-sm text-gray-700 space-y-1">
-                                <li>• <strong>Item weights (1-5):</strong> Rate each feature's importance (1=Minimal, 5=Critical)</li>
-                                <li>• <strong>Category multipliers:</strong> Adjust strategic priority of entire categories</li>
-                                <li>• <strong>Your task:</strong> Score each feature for Databricks vs Qlik (0-10) based on your assessment</li>
-                                <li>• <strong>Final score:</strong> Weighted average across all categories, normalized to 0-10 scale</li>
-                            </ul>
-                        </div>
-
-                        <div className="mt-6 flex justify-center">
-                            <button
-                                onClick={() => setShowSubmitModal(true)}
-                                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-sm text-lg"
-                            >
-                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                </svg>
-                                Submit Response
-                            </button>
-                        </div>
-                    </div>
-
-                    {showSubmitModal && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-                                <h3 className="text-2xl font-bold text-gray-900 mb-4">Submit Your Evaluation</h3>
-                                
-                                {submitSuccess ? (
-                                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                                        <p className="text-green-800 font-semibold">✓ Submitted successfully!</p>
-                                        <p className="text-green-700 text-sm mt-1">Your evaluation has been sent.</p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <p className="text-gray-600 mb-4">
-                                            Enter your details to submit your evaluation scores.
-                                        </p>
-                                        
-                                        <div className="space-y-4 mb-6">
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                                                    Your Name *
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={submitterName}
-                                                    onChange={(e) => setSubmitterName(e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                                    placeholder="John Doe"
-                                                />
-                                            </div>
-                                            
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                                                    Your Email *
-                                                </label>
-                                                <input
-                                                    type="email"
-                                                    value={submitterEmail}
-                                                    onChange={(e) => setSubmitterEmail(e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                                    placeholder="john@example.com"
-                                                />
-                                            </div>
-
-                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                                <p className="text-sm text-blue-900 font-semibold mb-1">Current Scores:</p>
-                                                <div className="flex justify-between text-sm">
-                                                    <span style={{color: '#2563EB'}}>Databricks: {results.finalDB.toFixed(2)}</span>
-                                                    <span style={{color: '#1E40AF'}}>Qlik: {results.finalQlik.toFixed(2)}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {submitError && (
-                                            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                                                <p className="text-red-800 text-sm">{submitError}</p>
-                                            </div>
-                                        )}
-
-                                        <div className="flex gap-3">
-                                            <button
-                                                onClick={() => {
-                                                    setShowSubmitModal(false);
-                                                    setSubmitError('');
-                                                }}
-                                                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold"
-                                                disabled={isSubmitting}
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                onClick={handleSubmit}
-                                                disabled={isSubmitting}
-                                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold disabled:opacity-50"
-                                            >
-                                                {isSubmitting ? 'Submitting...' : 'Submit'}
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
+        if (field === 'weight') {
+          const v = Number(raw);
+          item.weight = Number.isFinite(v) ? clampInt(v, 1, 5) : 1;
+        } else if (field === 'db' || field === 'qlik') {
+          const v = Number(raw);
+          item[field] = Number.isFinite(v) ? clamp(v, 0, 10) : 0;
+        } else {
+          item[field] = raw;
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<EvaluationFramework />);
-    </script>
+        newCategories[catIdx].items[itemIdx] = item;
+        setCategories(newCategories);
+      };
+
+      const updateMetaWeight = (key, value) => {
+        const v = Number(value);
+        setMetaWeights(prev => ({ ...prev, [key]: Number.isFinite(v) ? Math.max(0, v) : 0 }));
+      };
+      // ---- end helpers ----
+
+      const handleSubmit = async () => {
+        if (!submitterName || !submitterEmail) {
+          setSubmitError('Please enter your name and email');
+          return;
+        }
+
+        setIsSubmitting(true);
+        setSubmitError('');
+
+        const submissionData = {
+          submitter_name: submitterName,
+          submitter_email: submitterEmail,
+          submission_date: new Date().toISOString(),
+          final_scores: {
+            databricks: results.finalDB.toFixed(2),
+            qlik: results.finalQlik.toFixed(2)
+          },
+          category_multipliers: metaWeights,
+          category_results: results.categories.map(cat => ({
+            category: cat.category,
+            multiplier: cat.multiplier,
+            databricks_avg: cat.avgDB.toFixed(2),
+            qlik_avg: cat.avgQlik.toFixed(2),
+            databricks_weighted: cat.weightedDB.toFixed(2),
+            qlik_weighted: cat.weightedQlik.toFixed(2)
+          })),
+          detailed_scores: categories.map(cat => ({
+            category: cat.name,
+            items: cat.items.map(item => ({
+              feature: item.name,
+              weight: item.weight,
+              databricks_score: item.db,
+              qlik_score: item.qlik,
+              notes: item.notes
+            }))
+          }))
+        };
+
+        try {
+          const response = await fetch('https://formspree.io/f/xkgqyqeo', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(submissionData)
+          });
+
+          const responseData = await response.json();
+
+          if (response.ok) {
+            setSubmitSuccess(true);
+            setTimeout(() => {
+              setShowSubmitModal(false);
+              setSubmitSuccess(false);
+              setSubmitterName('');
+              setSubmitterEmail('');
+            }, 2000);
+          } else {
+            setSubmitError(`Failed to submit: ${responseData.error || responseData.errors?.[0]?.message || 'Unknown error'}`);
+          }
+        } catch (error) {
+          setSubmitError(`Error: ${error.message}`);
+        } finally {
+          setIsSubmitting(false);
+        }
+      };
+
+      const results = useMemo(() => {
+        let totalWeightedDB = 0;
+        let totalWeightedQlik = 0;
+        let totalEffectiveWeight = 0;
+
+        const categoryResults = categories.map(category => {
+          const categoryMultiplier = Math.max(0, Number(metaWeights[category.key]) || 0);
+          const sumOfWeights = category.items.reduce(
+            (sum, item) => sum + (Number(item.weight) || 0), 0
+          ) || 1; // avoid divide-by-zero
+
+          let categoryWeightedDB = 0;
+          let categoryWeightedQlik = 0;
+
+          category.items.forEach(item => {
+            const w  = Number(item.weight) || 0;
+            const db = Number(item.db) || 0;
+            const ql = Number(item.qlik) || 0;
+            const normalizedWeight = (w / sumOfWeights) * categoryMultiplier;
+            categoryWeightedDB  += db * normalizedWeight;
+            categoryWeightedQlik += ql * normalizedWeight;
+          });
+
+          totalWeightedDB += categoryWeightedDB;
+          totalWeightedQlik += categoryWeightedQlik;
+          totalEffectiveWeight += categoryMultiplier;
+
+          return {
+            category: category.name,
+            multiplier: categoryMultiplier,
+            sumOfWeights,
+            weightedDB: categoryWeightedDB,
+            weightedQlik: categoryWeightedQlik,
+            avgDB: categoryMultiplier ? categoryWeightedDB / categoryMultiplier : 0,
+            avgQlik: categoryMultiplier ? categoryWeightedQlik / categoryMultiplier : 0
+          };
+        });
+
+        const safeDenom = totalEffectiveWeight || 1;
+
+        return {
+          categories: categoryResults,
+          totalWeightedDB,
+          totalWeightedQlik,
+          totalEffectiveWeight,
+          finalDB: totalWeightedDB / safeDenom,
+          finalQlik: totalWeightedQlik / safeDenom
+        };
+      }, [categories, metaWeights]);
+
+      return (
+        <div className="w-full max-w-7xl mx-auto p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <h1 className="text-3xl font-bold text-gray-900">Databricks vs Qlik Evaluation</h1>
+              <button
+                onClick={() => setShowSubmitModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-sm"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                Submit Response
+              </button>
+            </div>
+            <p className="text-gray-600 mb-4">Quantitative assessment framework</p>
+
+            {/* Multipliers editor */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+              <h3 className="font-semibold text-gray-700 mb-3">Category Multipliers</h3>
+              <div className="flex gap-16">
+                <div className="space-y-2">
+                  {[
+                    { key: 'coreBIAnalytics', label: 'Core BI: Analytics & Interactivity' },
+                    { key: 'coreBIViz',      label: 'Core BI: Visualization & Design' },
+                    { key: 'dataPlatform',   label: 'Data Platform & Architecture' },
+                    { key: 'governance',     label: 'Governance & Security' },
+                    { key: 'aiml',           label: 'AI/ML Capabilities & Future Readiness' },
+                  ].map(({ key, label }) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <label className="text-sm text-gray-700 font-medium w-64">{label}</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={metaWeights[key]}
+                        onChange={(e) => updateMetaWeight(key, e.target.value)}
+                        className="w-16 px-2 py-1.5 border border-gray-300 rounded text-sm text-center"
+                      />
+                      <span className="text-sm text-gray-500">×</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  {[
+                    { key: 'devEx',      label: 'Developer Experience & Velocity' },
+                    { key: 'operations', label: 'Operations & Scalability' },
+                    { key: 'cost',       label: 'Cost & Resources' },
+                    { key: 'product',    label: 'Product & Market' },
+                  ].map(({ key, label }) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <label className="text-sm text-gray-700 font-medium w-64">{label}</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={metaWeights[key]}
+                        onChange={(e) => updateMetaWeight(key, e.target.value)}
+                        className="w-16 px-2 py-1.5 border border-gray-300 rounded text-sm text-center"
+                      />
+                      <span className="text-sm text-gray-500">×</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Weight scale helper */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <div className="flex items-start gap-3">
+                <button onClick={() => setShowWeightGuide(!showWeightGuide)} className="flex-shrink-0 mt-0.5">
+                  <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h4 className="font-semibold text-gray-900">Item Weight Scale (1–5)</h4>
+                    <button onClick={() => setShowWeightGuide(!showWeightGuide)} className="text-xs text-blue-600 hover:text-blue-800">
+                      {showWeightGuide ? 'Hide' : 'Show'} Guide
+                    </button>
+                  </div>
+                  {showWeightGuide && (
+                    <div className="space-y-1 text-sm">
+                      {Object.entries(weightDefinitions).map(([num, def]) => (
+                        <div key={num} className="flex gap-2">
+                          <span className="font-semibold text-gray-700 w-6">{num}:</span>
+                          <span className="font-medium text-gray-800">{def.label}</span>
+                          <span className="text-gray-600">– {def.description}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Category tables */}
+          {categories.map((category, catIdx) => {
+            const catResult = results.categories[catIdx];
+            return (
+              <div key={category.key} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">{category.name}</h2>
+                    <p className="text-sm text-gray-600">
+                      Category Multiplier: {catResult.multiplier}× | Item weights sum: {catResult.sumOfWeights}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-gray-600">Category Averages</div>
+                    <div className="flex gap-4 mt-1">
+                      <span className="font-semibold" style={{color: '#2563EB'}}>DB: {catResult.avgDB.toFixed(2)}</span>
+                      <span className="font-semibold" style={{color: '#1E40AF'}}>Qlik: {catResult.avgQlik.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b-2 border-gray-300 bg-gray-50">
+                        <th className="text-left py-2 px-2 font-semibold text-gray-700">Feature</th>
+                        <th className="text-center py-2 px-2 font-semibold text-gray-700">
+                          <div>Weight</div>
+                          <div className="text-xs font-normal text-gray-500">(1–5)</div>
+                        </th>
+                        <th className="text-center py-2 px-2 font-semibold" style={{color: '#2563EB'}}>DB Score</th>
+                        <th className="text-center py-2 px-2 font-semibold" style={{color: '#1E40AF'}}>Qlik Score</th>
+                        <th className="text-center py-2 px-2 font-semibold" style={{color: '#2563EB'}}>DB Wtd</th>
+                        <th className="text-center py-2 px-2 font-semibold" style={{color: '#1E40AF'}}>Qlik Wtd</th>
+                        <th className="text-left py-2 px-2 font-semibold text-gray-700">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {category.items.map((item, itemIdx) => {
+                        const sumOfWeights = catResult.sumOfWeights;
+                        const normalizedWeight = (item.weight / sumOfWeights) * catResult.multiplier;
+                        const dbWeighted = (Number(item.db) || 0) * normalizedWeight;
+                        const qlikWeighted = (Number(item.qlik) || 0) * normalizedWeight;
+                        const dbNum = Number(item.db) || 0;
+                        const qlNum = Number(item.qlik) || 0;
+                        const winner = dbNum > qlNum ? 'db' : qlNum > dbNum ? 'qlik' : 'tie';
+
+                        return (
+                          <tr key={itemIdx} className="border-b border-gray-200 hover:bg-gray-50">
+                            <td className="py-2 px-2 text-gray-900">{item.name}</td>
+                            <td className="py-2 px-2 text-center">
+                              <div className="flex flex-col items-center gap-1">
+                                <input
+                                  type="number" min="1" max="5" value={item.weight}
+                                  onChange={(e) => updateScore(catIdx, itemIdx, 'weight', e.target.value)}
+                                  className="w-16 px-2 py-1 text-center text-gray-700 font-semibold border border-gray-300 rounded"
+                                />
+                                <span className="text-xs text-gray-500">{weightDefinitions[item.weight]?.label}</span>
+                              </div>
+                            </td>
+                            <td className={`py-2 px-2 text-center ${winner === 'db' ? 'bg-blue-50' : ''}`}>
+                              <input
+                                type="number" min="0" max="10" step="0.5" value={item.db}
+                                onChange={(e) => updateScore(catIdx, itemIdx, 'db', e.target.value)}
+                                className={`w-16 px-2 py-1 text-center font-semibold border border-gray-300 rounded ${winner === 'db' ? 'bg-blue-50 border-blue-400' : ''}`}
+                                style={{color: winner === 'db' ? '#2563EB' : '#374151'}}
+                              />
+                            </td>
+                            <td className={`py-2 px-2 text-center ${winner === 'qlik' ? 'bg-blue-50' : ''}`}>
+                              <input
+                                type="number" min="0" max="10" step="0.5" value={item.qlik}
+                                onChange={(e) => updateScore(catIdx, itemIdx, 'qlik', e.target.value)}
+                                className={`w-16 px-2 py-1 text-center font-semibold border border-gray-300 rounded ${winner === 'qlik' ? 'bg-blue-50 border-blue-400' : ''}`}
+                                style={{color: winner === 'qlik' ? '#1E40AF' : '#374151'}}
+                              />
+                            </td>
+                            <td className="py-2 px-2 text-center text-xs" style={{color: '#2563EB'}}>{dbWeighted.toFixed(2)}</td>
+                            <td className="py-2 px-2 text-center text-xs" style={{color: '#1E40AF'}}>{qlikWeighted.toFixed(2)}</td>
+                            <td className="py-2 px-2">
+                              <div className="text-gray-600 text-xs whitespace-normal">{item.notes}</div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="bg-gray-100 font-semibold">
+                        <td className="py-2 px-2">Category Subtotal</td>
+                        <td className="py-2 px-2 text-center text-gray-600">{catResult.sumOfWeights}</td>
+                        <td className="py-2 px-2 text-center" style={{color: '#2563EB'}}>{catResult.avgDB.toFixed(2)}</td>
+                        <td className="py-2 px-2 text-center" style={{color: '#1E40AF'}}>{catResult.avgQlik.toFixed(2)}</td>
+                        <td className="py-2 px-2 text-center" style={{color: '#2563EB'}}>{catResult.weightedDB.toFixed(2)}</td>
+                        <td className="py-2 px-2 text-center" style={{color: '#1E40AF'}}>{catResult.weightedQlik.toFixed(2)}</td>
+                        <td className="py-2 px-2"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Final Summary */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Final Summary</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b-2 border-gray-300 bg-gray-50">
+                    <th className="text-left py-2 px-4 font-semibold text-gray-700">Category</th>
+                    <th className="text-center py-2 px-4 font-semibold text-gray-700">Multiplier</th>
+                    <th className="text-center py-2 px-4 font-semibold" style={{color: '#2563EB'}}>DB Weighted</th>
+                    <th className="text-center py-2 px-4 font-semibold" style={{color: '#1E40AF'}}>Qlik Weighted</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.categories.map((cat, idx) => (
+                    <tr key={idx} className="border-b border-gray-200">
+                      <td className="py-2 px-4">{cat.category}</td>
+                      <td className="py-2 px-4 text-center">{cat.multiplier.toFixed(1)}×</td>
+                      <td className="py-2 px-4 text-center font-semibold" style={{color: '#2563EB'}}>{cat.weightedDB.toFixed(2)}</td>
+                      <td className="py-2 px-4 text-center font-semibold" style={{color: '#1E40AF'}}>{cat.weightedQlik.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-gray-900 text-white font-bold text-lg">
+                    <td className="py-3 px-4">TOTAL</td>
+                    <td className="py-3 px-4 text-center">{results.totalEffectiveWeight.toFixed(1)}</td>
+                    <td className="py-3 px-4 text-center">{results.totalWeightedDB.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-center">{results.totalWeightedQlik.toFixed(2)}</td>
+                  </tr>
+                  <tr className="bg-gray-50 font-bold text-xl">
+                    <td className="py-3 px-4" colSpan="2">FINAL WEIGHTED AVERAGE (out of 10)</td>
+                    <td className="py-3 px-4 text-center" style={{color: '#2563EB'}}>{results.finalDB.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-center" style={{color: '#1E40AF'}}>{results.finalQlik.toFixed(2)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <h3 className="font-semibold text-gray-900 mb-2">How This Works</h3>
+              <ul className="text-sm text-gray-700 space-y-1">
+                <li>• <strong>Item weights (1–5):</strong> Rate each feature's importance (1=Minimal, 5=Critical)</li>
+                <li>• <strong>Category multipliers:</strong> Adjust strategic priority of entire categories</li>
+                <li>• <strong>Your task:</strong> Score each feature for Databricks vs Qlik (0–10) based on your assessment</li>
+                <li>• <strong>Final score:</strong> Weighted average across all categories, normalized to 0–10 scale</li>
+              </ul>
+            </div>
+
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={() => setShowSubmitModal(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-sm text-lg"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                Submit Response
+              </button>
+            </div>
+          </div>
+
+          {showSubmitModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Submit Your Evaluation</h3>
+
+                {submitSuccess ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                    <p className="text-green-800 font-semibold">✓ Submitted successfully!</p>
+                    <p className="text-green-700 text-sm mt-1">Your evaluation has been sent.</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-gray-600 mb-4">
+                      Enter your details to submit your evaluation scores.
+                    </p>
+
+                    <div className="space-y-4 mb-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Your Name *</label>
+                        <input
+                          type="text" value={submitterName} onChange={(e) => setSubmitterName(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="John Doe"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Your Email *</label>
+                        <input
+                          type="email" value={submitterEmail} onChange={(e) => setSubmitterEmail(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="john@example.com"
+                        />
+                      </div>
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-sm text-blue-900 font-semibold mb-1">Current Scores:</p>
+                        <div className="flex justify-between text-sm">
+                          <span style={{color: '#2563EB'}}>Databricks: {results.finalDB.toFixed(2)}</span>
+                          <span style={{color: '#1E40AF'}}>Qlik: {results.finalQlik.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {submitError && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                        <p className="text-red-800 text-sm">{submitError}</p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => { setShowSubmitModal(false); setSubmitError(''); }}
+                        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold"
+                        disabled={isSubmitting}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSubmit} disabled={isSubmitting}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold disabled:opacity-50"
+                      >
+                        {isSubmitting ? 'Submitting...' : 'Submit'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<EvaluationFramework />);
+  </script>
 </body>
 </html>
-

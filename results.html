@@ -9,7 +9,7 @@
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
   </style>
 
-  <!-- React/ReactDOM/Babel MUST come before JSX -->
+  <!-- Load React/ReactDOM/Babel BEFORE the JSX script -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -32,25 +32,21 @@
       { key: 'product',        label: 'Product & Market' },
     ];
 
-    // One-line row component (label + slider + DB/Qlik + avg multiplier + button)
+    // Row: label + slider + numeric mean + DB/Qlik avgs + button on the right
     function CategoryOneLineRow({ row, onDetails }) {
       const mean = Number(row.meanMultiplier) || 0;
-      const trackMax = 2; // visual track 0..2; diamond clamps visually but number shows true value
+      const trackMax = 2; // 0..2 visual; number shows true mean even if >2
       const clamped = Math.max(0, Math.min(trackMax, mean));
       const pct = (clamped / trackMax) * 100;
 
       return (
         <div className="flex items-center gap-4 py-2">
-          {/* label */}
           <div className="w-[260px] text-gray-900 font-medium truncate" title={row.label}>{row.label}</div>
 
-          {/* slider */}
           <div className="flex-1 flex items-center gap-2">
             <span className="text-xs text-gray-500 w-6 text-right">0.0</span>
             <div className="relative h-2 flex-1 rounded bg-gray-200">
-              {/* midpoint tick @ 1.0 */}
               <div className="absolute top-1/2 -translate-y-1/2 left-1/2 w-0.5 h-4 bg-gray-400 rounded" />
-              {/* marker */}
               <div className="absolute -top-1.5" style={{ left: `calc(${pct}% - 6px)` }}>
                 <div className="w-3 h-3 rotate-45 bg-blue-600 rounded-sm shadow" />
               </div>
@@ -58,12 +54,10 @@
             <span className="text-xs text-gray-500 w-6">2.0</span>
           </div>
 
-          {/* numeric mean (true value, not capped) */}
           <div className="w-14 text-right font-semibold tabular-nums" title="Average multiplier">
             {mean.toFixed(2)}
           </div>
 
-          {/* DB/Qlik averages */}
           <div className="w-16 text-right font-semibold tabular-nums" style={{color:'#2563EB'}} title="DB Avg">
             {row.meanDB.toFixed(2)}
           </div>
@@ -71,7 +65,6 @@
             {row.meanQlik.toFixed(2)}
           </div>
 
-          {/* button */}
           <div className="w-36 text-right">
             <button
               onClick={() => onDetails(row)}
@@ -89,8 +82,8 @@
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
 
-      const [selectedSubmission, setSelectedSubmission] = useState(null);  // individual response modal
-      const [catDetails, setCatDetails] = useState(null);                   // category details modal
+      const [selectedSubmission, setSelectedSubmission] = useState(null); // per-submission modal
+      const [catDetails, setCatDetails] = useState(null);                  // per-category feature-AVERAGES modal
 
       useEffect(() => { fetchSubmissions(); }, []);
 
@@ -128,7 +121,7 @@
       const findCatRowByName = (s, label) =>
         (s.category_results || []).find(r => r.category === label) || null;
 
-      // Build the combined per-category rollups (means)
+      // Rollups for the one-line category list
       const categoryAgg = useMemo(() => {
         return CATEGORY_META.map(({ key, label }) => {
           let mCount = 0, mSum = 0;
@@ -142,9 +135,9 @@
             if (row) {
               const d = Number(row.databricks_avg);
               const q = Number(row.qlik_avg);
-              if (Number.isFinite(d)) { dbSum += d; }
-              if (Number.isFinite(q)) { qlSum += q; }
-              if (Number.isFinite(d) || Number.isFinite(q)) { scoreCount++; }
+              if (Number.isFinite(d)) dbSum += d;
+              if (Number.isFinite(q)) qlSum += q;
+              if (Number.isFinite(d) || Number.isFinite(q)) scoreCount++;
             }
           });
 
@@ -158,20 +151,45 @@
         });
       }, [submissions]);
 
-      // Open the Category Details modal (shows per-submission values for that category)
-      const openCategoryDetails = (row) => {
-        const details = submissions.map(s => {
-          const catRow = findCatRowByName(s, row.label);
-          return {
-            name: s.submitter_name || '—',
-            email: s.submitter_email || '—',
-            db: catRow ? Number(catRow.databricks_avg || 0) : 0,
-            ql: catRow ? Number(catRow.qlik_avg || 0) : 0,
-            mult: Number(s.category_multipliers?.[row.key]) || 0,
-            date: new Date(s.submission_date || s._date).toLocaleDateString()
-          };
+      // Build FEATURE AVERAGES for a given category label across all submissions
+      const buildFeatureAveragesForCategory = (categoryLabel) => {
+        const featureMap = new Map(); // featureName -> {sumDb,sumQl,sumW,count}
+        submissions.forEach(s => {
+          const ds = s.detailed_scores || [];
+          const cat = ds.find(c => c.category === categoryLabel);
+          if (!cat) return;
+          (cat.items || []).forEach(item => {
+            const name = item.feature;
+            if (!name) return;
+            const db = Number(item.databricks_score) || 0;
+            const ql = Number(item.qlik_score) || 0;
+            const w  = Number(item.weight) || 0;
+            if (!featureMap.has(name)) featureMap.set(name, { sumDb:0, sumQl:0, sumW:0, count:0 });
+            const rec = featureMap.get(name);
+            rec.sumDb += db;
+            rec.sumQl += ql;
+            rec.sumW  += w;
+            rec.count += 1;
+          });
         });
-        setCatDetails({ meta: row, rows: details });
+
+        const rows = Array.from(featureMap.entries()).map(([feature, r]) => ({
+          feature,
+          avgDb: r.count ? r.sumDb / r.count : 0,
+          avgQl: r.count ? r.sumQl / r.count : 0,
+          avgWeight: r.count ? r.sumW / r.count : 0,
+          n: r.count
+        }));
+
+        // Sort by avgWeight desc, then feature name
+        rows.sort((a,b) => (b.avgWeight - a.avgWeight) || a.feature.localeCompare(b.feature));
+        return rows;
+      };
+
+      // OPEN modal with feature averages for that category
+      const openCategoryDetails = (row) => {
+        const featureRows = buildFeatureAveragesForCategory(row.label);
+        setCatDetails({ meta: row, features: featureRows });
       };
 
       if (loading) {
@@ -234,7 +252,7 @@
               </div>
             </div>
 
-            {/* SINGLE combined section – one line per category */}
+            {/* ONE-LINE category list */}
             <div className="mb-8 bg-gray-50 p-4 rounded-lg border border-gray-200">
               <div className="flex items-center gap-4 text-xs text-gray-500 mb-1">
                 <div className="w-[260px]"></div>
@@ -259,6 +277,7 @@
               </div>
             </div>
 
+            {/* Submissions table (unchanged) */}
             {submissions.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 No submissions yet. Share your evaluation form to start collecting responses!
@@ -305,12 +324,14 @@
             )}
           </div>
 
-          {/* Per-category DETAILS modal */}
+          {/* CATEGORY FEATURE-AVERAGES MODAL */}
           {catDetails && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-              <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
+              <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold text-gray-900">Category Details — {catDetails.meta.label}</h3>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Feature Averages — {catDetails.meta.label}
+                  </h3>
                   <button
                     onClick={() => setCatDetails(null)}
                     className="text-gray-500 hover:text-gray-700 text-2xl font-bold leading-none"
@@ -319,32 +340,32 @@
                     ×
                   </button>
                 </div>
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b-2 border-gray-300 bg-gray-50">
-                        <th className="text-left py-2 px-3 font-semibold text-gray-700">Name</th>
-                        <th className="text-left py-2 px-3 font-semibold text-gray-700">Email</th>
+                        <th className="text-left py-2 px-3 font-semibold text-gray-700">Feature</th>
+                        <th className="text-center py-2 px-3 font-semibold text-gray-700">Avg Weight</th>
                         <th className="text-center py-2 px-3 font-semibold" style={{color:'#2563EB'}}>DB Avg</th>
                         <th className="text-center py-2 px-3 font-semibold" style={{color:'#1E40AF'}}>Qlik Avg</th>
-                        <th className="text-center py-2 px-3 font-semibold text-gray-700">Multiplier</th>
-                        <th className="text-center py-2 px-3 font-semibold text-gray-700">Date</th>
+                        <th className="text-center py-2 px-3 font-semibold text-gray-700">N</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {catDetails.rows.map((r, i) => (
+                      {catDetails.features.map((r, i) => (
                         <tr key={i} className="border-b border-gray-200">
-                          <td className="py-2 px-3">{r.name}</td>
-                          <td className="py-2 px-3 text-gray-600">{r.email}</td>
-                          <td className="py-2 px-3 text-center" style={{color:'#2563EB'}}>{(r.db || 0).toFixed(2)}</td>
-                          <td className="py-2 px-3 text-center" style={{color:'#1E40AF'}}>{(r.ql || 0).toFixed(2)}</td>
-                          <td className="py-2 px-3 text-center">{(r.mult || 0).toFixed(2)}</td>
-                          <td className="py-2 px-3 text-center text-gray-600 text-sm">{r.date}</td>
+                          <td className="py-2 px-3 text-gray-900">{r.feature}</td>
+                          <td className="py-2 px-3 text-center text-gray-700">{r.avgWeight.toFixed(2)}</td>
+                          <td className="py-2 px-3 text-center" style={{color:'#2563EB'}}>{r.avgDb.toFixed(2)}</td>
+                          <td className="py-2 px-3 text-center" style={{color:'#1E40AF'}}>{r.avgQl.toFixed(2)}</td>
+                          <td className="py-2 px-3 text-center text-gray-600">{r.n}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+
                 <div className="mt-6 text-right">
                   <button
                     onClick={() => setCatDetails(null)}
@@ -357,7 +378,7 @@
             </div>
           )}
 
-          {/* Individual submission DETAILS modal (unchanged) */}
+          {/* INDIVIDUAL SUBMISSION MODAL (unchanged) */}
           {selectedSubmission && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
               <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">

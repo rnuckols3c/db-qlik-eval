@@ -29,7 +29,8 @@
 <body class="bg-gray-50">
   <div id="root"></div>
 
-  <script type="text/babel">
+  <!-- IMPORTANT: data-presets so Babel compiles JSX correctly -->
+  <script type="text/babel" data-presets="env,react">
     const { useState, useEffect, useMemo } = React;
 
     // ---------- tiny helpers ----------
@@ -39,16 +40,16 @@
     };
 
     const median = (arr) => {
-      if (!arr.length) return 0;
+      if (!arr || !arr.length) return 0;
       const v = [...arr].sort((a, b) => a - b);
       const m = Math.floor(v.length / 2);
       return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
     };
 
     const mean = (arr) =>
-      arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+      arr && arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 
-    const format2 = (n) => n.toFixed(2);
+    const format2 = (n) => (Number.isFinite(n) ? n.toFixed(2) : '0.00');
 
     // A tiny distribution bar (min..max) with ticks for mean & median
     const DistBar = ({ values }) => {
@@ -60,7 +61,6 @@
       const meanV = mean(values);
       const medV = median(values);
 
-      // avoid zero-width; if min===max, show a centered dot
       const width = 160;
       const scale = (x) =>
         minV === maxV ? width / 2 : ((x - minV) / (maxV - minV)) * width;
@@ -71,10 +71,7 @@
           <div className="relative h-2 w-40 rounded-full bg-gray-200">
             <div
               className="absolute top-0 h-2 rounded-full bg-gray-300"
-              style={{
-                left: 0,
-                width: width + 'px',
-              }}
+              style={{ left: 0, width: width + 'px' }}
             ></div>
             {/* mean (circle) */}
             <div
@@ -132,13 +129,16 @@
 
           if (!response.ok) {
             throw new Error(
-              \`Failed to fetch submissions: \${response.status} \${response.statusText}\`
+              `Failed to fetch submissions: ${response.status} ${response.statusText}`
             );
           }
 
           const data = await response.json();
-          setSubmissions(data.submissions || []);
+          // Defensive: ensure we have an array
+          const subs = Array.isArray(data.submissions) ? data.submissions : [];
+          setSubmissions(subs);
         } catch (err) {
+          console.error(err);
           setError(err.message);
         } finally {
           setLoading(false);
@@ -149,8 +149,8 @@
         if (!submissions.length) return { db: '0.00', qlik: '0.00' };
         const totals = submissions.reduce(
           (acc, sub) => {
-            acc.db += toNum(sub.final_scores?.databricks);
-            acc.qlik += toNum(sub.final_scores?.qlik);
+            acc.db += toNum(sub?.final_scores?.databricks);
+            acc.qlik += toNum(sub?.final_scores?.qlik);
             return acc;
           },
           { db: 0, qlik: 0 }
@@ -163,13 +163,12 @@
 
       // ---------- Cross-submission aggregates by category & feature ----------
       const aggregates = useMemo(() => {
-        // categoryAggs: { [categoryName]: { multipliers: [..], dbAvgs: [..], qlikAvgs: [..], weightedDB: [..], weightedQlik: [..], features: { [featureName]: {...} } } }
         const categoryAggs = {};
 
         for (const sub of submissions) {
-          // 1) category-level
-          for (const cat of sub.category_results || []) {
-            const name = cat.category;
+          // category-level
+          for (const cat of sub?.category_results || []) {
+            const name = cat.category || 'Uncategorized';
             if (!categoryAggs[name]) {
               categoryAggs[name] = {
                 multipliers: [],
@@ -187,9 +186,9 @@
             categoryAggs[name].weightedQlik.push(toNum(cat.qlik_weighted));
           }
 
-          // 2) feature-level (nested under categories)
-          for (const cat of sub.detailed_scores || []) {
-            const catName = cat.category;
+          // feature-level
+          for (const cat of sub?.detailed_scores || []) {
+            const catName = cat.category || 'Uncategorized';
             if (!categoryAggs[catName]) {
               categoryAggs[catName] = {
                 multipliers: [],
@@ -201,7 +200,7 @@
               };
             }
             for (const item of cat.items || []) {
-              const fName = item.feature;
+              const fName = item.feature || 'Unnamed Feature';
               if (!categoryAggs[catName].features[fName]) {
                 categoryAggs[catName].features[fName] = {
                   count: 0,
@@ -219,7 +218,6 @@
           }
         }
 
-        // compute summary rows
         const rows = Object.entries(categoryAggs).map(([catName, agg]) => {
           const mp = agg.multipliers;
           const dbA = agg.dbAvgs;
@@ -229,7 +227,7 @@
 
           return {
             category: catName,
-            count: dbA.length || qlA.length || mp.length,
+            count: Math.max(dbA.length, qlA.length, mp.length),
             multiplier: {
               min: mp.length ? Math.min(...mp) : 0,
               max: mp.length ? Math.max(...mp) : 0,
@@ -251,8 +249,11 @@
           };
         });
 
-        // stable sort: highest average multiplier first, then alpha
-        rows.sort((a, b) => b.multiplier.mean - a.multiplier.mean || a.category.localeCompare(b.category));
+        rows.sort(
+          (a, b) =>
+            b.multiplier.mean - a.multiplier.mean ||
+            a.category.localeCompare(b.category)
+        );
         return rows;
       }, [submissions]);
 
@@ -293,7 +294,9 @@
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
                   Evaluation Results Dashboard
                 </h1>
-                <p className="text-gray-600">Databricks vs Qlik - Response Summary</p>
+                <p className="text-gray-600">
+                  Databricks vs Qlik - Response Summary
+                </p>
               </div>
               <button
                 onClick={fetchSubmissions}
@@ -500,4 +503,358 @@
                               .sort((a, b) => b.weightAvg - a.weightAvg)
                               .map((f) => (
                                 <tr
-                                  key={f.fea
+                                  key={f.feature}
+                                  className="border-b border-gray-100"
+                                >
+                                  <td className="py-2 px-3 text-gray-900">
+                                    {f.feature}
+                                  </td>
+                                  <td className="py-2 px-3 text-center text-gray-600">
+                                    {f.count}
+                                  </td>
+                                  <td className="py-2 px-3 text-center text-gray-700">
+                                    {format2(f.weightAvg)}
+                                  </td>
+                                  <td
+                                    className="py-2 px-3 text-center font-semibold"
+                                    style={{ color: '#2563EB' }}
+                                  >
+                                    {format2(f.dbAvg)}
+                                  </td>
+                                  <td
+                                    className="py-2 px-3 text-center font-semibold"
+                                    style={{ color: '#1E40AF' }}
+                                  >
+                                    {format2(f.qlikAvg)}
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : null
+                )}
+              </div>
+            </div>
+
+            {/* ------- Raw submissions table ------- */}
+            {submissions.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                No submissions yet. Share your evaluation form to start collecting
+                responses!
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b-2 border-gray-300 bg-gray-50">
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                        Name
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                        Email
+                      </th>
+                      <th
+                        className="text-center py-3 px-4 font-semibold"
+                        style={{ color: '#2563EB' }}
+                      >
+                        DB Score
+                      </th>
+                      <th
+                        className="text-center py-3 px-4 font-semibold"
+                        style={{ color: '#1E40AF' }}
+                      >
+                        Qlik Score
+                      </th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                        Date
+                      </th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                        Details
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {submissions.map((submission, idx) => {
+                      const dbScore = toNum(submission?.final_scores?.databricks);
+                      const qlikScore = toNum(submission?.final_scores?.qlik);
+                      const date = new Date(
+                        submission?.submission_date || submission?._date || Date.now()
+                      ).toLocaleDateString();
+
+                      return (
+                        <tr
+                          key={idx}
+                          className="border-b border-gray-200 hover:bg-gray-50"
+                        >
+                          <td className="py-3 px-4 text-gray-900">
+                            {submission?.submitter_name || '—'}
+                          </td>
+                          <td className="py-3 px-4 text-gray-600">
+                            {submission?.submitter_email || '—'}
+                          </td>
+                          <td
+                            className="py-3 px-4 text-center font-semibold"
+                            style={{ color: '#2563EB' }}
+                          >
+                            {format2(dbScore)}
+                          </td>
+                          <td
+                            className="py-3 px-4 text-center font-semibold"
+                            style={{ color: '#1E40AF' }}
+                          >
+                            {format2(qlikScore)}
+                          </td>
+                          <td className="py-3 px-4 text-center text-gray-600 text-sm">
+                            {date}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => setSelectedSubmission(submission)}
+                              className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+          </div>
+
+          {/* ------- Per-submission modal ------- */}
+          {selectedSubmission && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+              <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      {(selectedSubmission?.submitter_name || 'Evaluator') + "'s"} Evaluation
+                    </h2>
+                    <p className="text-gray-600">
+                      {selectedSubmission?.submitter_email || ''}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedSubmission(null)}
+                    className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div
+                    className="bg-blue-50 p-4 rounded-lg border"
+                    style={{ borderColor: '#2563EB' }}
+                  >
+                    <div className="text-sm text-gray-600 mb-1">
+                      Databricks Score
+                    </div>
+                    <div className="text-3xl font-bold" style={{ color: '#2563EB' }}>
+                      {format2(toNum(selectedSubmission?.final_scores?.databricks))}
+                    </div>
+                  </div>
+                  <div
+                    className="bg-blue-50 p-4 rounded-lg border"
+                    style={{ borderColor: '#60A5FA' }}
+                  >
+                    <div className="text-sm text-gray-600 mb-1">Qlik Score</div>
+                    <div className="text-3xl font-bold" style={{ color: '#1E40AF' }}>
+                      {format2(toNum(selectedSubmission?.final_scores?.qlik))}
+                    </div>
+                  </div>
+                </div>
+
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  Category Results
+                </h3>
+                <div className="overflow-x-auto mb-6">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b-2 border-gray-300 bg-gray-50">
+                        <th className="text-left py-2 px-3 font-semibold text-gray-700">
+                          Category
+                        </th>
+                        <th className="text-center py-2 px-3 font-semibold text-gray-700">
+                          Multiplier
+                        </th>
+                        <th
+                          className="text-center py-2 px-3 font-semibold"
+                          style={{ color: '#2563EB' }}
+                        >
+                          DB Avg
+                        </th>
+                        <th
+                          className="text-center py-2 px-3 font-semibold"
+                          style={{ color: '#1E40AF' }}
+                        >
+                          Qlik Avg
+                        </th>
+                        <th
+                          className="text-center py-2 px-3 font-semibold"
+                          style={{ color: '#2563EB' }}
+                        >
+                          DB Weighted
+                        </th>
+                        <th
+                          className="text-center py-2 px-3 font-semibold"
+                          style={{ color: '#1E40AF' }}
+                        >
+                          Qlik Weighted
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(selectedSubmission?.category_results || []).map((cat, idx) => (
+                        <tr key={idx} className="border-b border-gray-200">
+                          <td className="py-2 px-3 text-gray-900">{cat.category}</td>
+                          <td className="py-2 px-3 text-center text-gray-600">
+                            {cat.multiplier}×
+                          </td>
+                          <td
+                            className="py-2 px-3 text-center"
+                            style={{ color: '#2563EB' }}
+                          >
+                            {cat.databricks_avg}
+                          </td>
+                          <td
+                            className="py-2 px-3 text-center"
+                            style={{ color: '#1E40AF' }}
+                          >
+                            {cat.qlik_avg}
+                          </td>
+                          <td
+                            className="py-2 px-3 text-center font-semibold"
+                            style={{ color: '#2563EB' }}
+                          >
+                            {cat.databricks_weighted}
+                          </td>
+                          <td
+                            className="py-2 px-3 text-center font-semibold"
+                            style={{ color: '#1E40AF' }}
+                          >
+                            {cat.qlik_weighted}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  Detailed Feature Scores
+                </h3>
+                <div className="space-y-4">
+                  {(selectedSubmission?.detailed_scores || []).map((category, catIdx) => (
+                    <div key={catIdx} className="border border-gray-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-gray-900 mb-2">
+                        {category.category}
+                      </h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-gray-300 bg-gray-50">
+                              <th className="text-left py-1 px-2 font-semibold text-gray-700">
+                                Feature
+                              </th>
+                              <th className="text-center py-1 px-2 font-semibold text-gray-700">
+                                Weight
+                              </th>
+                              <th
+                                className="text-center py-1 px-2 font-semibold"
+                                style={{ color: '#2563EB' }}
+                              >
+                                DB
+                              </th>
+                              <th
+                                className="text-center py-1 px-2 font-semibold"
+                                style={{ color: '#1E40AF' }}
+                              >
+                                Qlik
+                              </th>
+                              <th className="text-left py-1 px-2 font-semibold text-gray-700">
+                                Notes
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(category.items || []).map((item, itemIdx) => (
+                              <tr key={itemIdx} className="border-b border-gray-100">
+                                <td className="py-1 px-2 text-gray-900">
+                                  {item.feature}
+                                </td>
+                                <td className="py-1 px-2 text-center text-gray-600">
+                                  {item.weight}
+                                </td>
+                                <td
+                                  className="py-1 px-2 text-center font-semibold"
+                                  style={{ color: '#2563EB' }}
+                                >
+                                  {item.databricks_score}
+                                </td>
+                                <td
+                                  className="py-1 px-2 text-center font-semibold"
+                                  style={{ color: '#1E40AF' }}
+                                >
+                                  {item.qlik_score}
+                                </td>
+                                <td className="py-1 px-2 text-gray-600 text-xs">
+                                  {item.notes}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={() => setSelectedSubmission(null)}
+                    className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Safe render with fallback
+    try {
+      const rootEl = document.getElementById('root');
+      const root = (ReactDOM && ReactDOM.createRoot)
+        ? ReactDOM.createRoot(rootEl)
+        : null;
+
+      if (root) {
+        root.render(<ResultsDashboard />);
+      } else if (ReactDOM && ReactDOM.render) {
+        ReactDOM.render(<ResultsDashboard />, rootEl);
+      } else {
+        rootEl.innerHTML =
+          '<div style="padding:16px;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:8px;">ReactDOM failed to load.</div>';
+      }
+    } catch (e) {
+      console.error(e);
+      const rootEl = document.getElementById('root');
+      rootEl.innerHTML =
+        '<div style="padding:16px;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:8px;">' +
+        'A runtime error prevented the dashboard from rendering. ' +
+        'Open the console for details.' +
+        '</div>';
+    }
+  </script>
+</body>
+</html>

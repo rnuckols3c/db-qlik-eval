@@ -9,7 +9,7 @@
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
   </style>
 
-  <!-- Load React/ReactDOM/Babel FIRST to avoid blank screen -->
+  <!-- Load React/ReactDOM/Babel FIRST -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -33,14 +33,32 @@
       { key: 'product',        label: 'Product & Market' },
     ];
 
-    // Simple normalized track (0..2) with a diamond marker and the real numeric mean at right.
+    // Small disclosure widget
+    function Disclosure({title, children, defaultOpen=false}) {
+      const [open, setOpen] = useState(defaultOpen);
+      return (
+        <div className="border border-gray-200 rounded-lg">
+          <button
+            onClick={() => setOpen(o => !o)}
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50"
+            aria-expanded={open}
+          >
+            <span className="font-semibold text-gray-900">{title}</span>
+            <span className="text-gray-500 text-xl leading-none">{open ? '–' : '+'}</span>
+          </button>
+          {open && <div className="p-4">{children}</div>}
+        </div>
+      );
+    }
+
+    // Normalized track (0..2) with diamond marker + true numeric mean at right
     function MultiplierRow({ label, mean, trackMax=2 }) {
-      const clamped = Math.max(0, Math.min(trackMax, mean || 0));
+      const clamped = Math.max(0, Math.min(trackMax, Number(mean) || 0));
       const pct = (clamped / trackMax) * 100;
 
       return (
         <div className="flex items-center gap-4">
-          <div className="w-[180px] text-gray-900 font-medium truncate">{label}</div>
+          <div className="w-[260px] text-gray-900 font-medium truncate">{label}</div>
           <div className="flex-1 flex items-center gap-2">
             <span className="text-xs text-gray-500 w-6 text-right">0.0</span>
             <div className="relative h-2 flex-1 rounded bg-gray-200">
@@ -50,31 +68,14 @@
               <div
                 className="absolute -top-1.5"
                 style={{ left: `calc(${pct}% - 6px)` }}
-                aria-label={`mean ${mean?.toFixed ? mean.toFixed(2) : mean}`}
+                aria-label={`mean ${Number(mean).toFixed(2)}`}
               >
                 <div className="w-3 h-3 rotate-45 bg-blue-600 rounded-sm shadow" />
               </div>
             </div>
             <span className="text-xs text-gray-500 w-6">2.0</span>
           </div>
-          <div className="w-12 text-right font-semibold tabular-nums">{(Number(mean)||0).toFixed(2)}</div>
-        </div>
-      );
-    }
-
-    // Small disclosure widget
-    function Disclosure({title, children, defaultOpen=false}) {
-      const [open, setOpen] = useState(defaultOpen);
-      return (
-        <div className="border border-gray-200 rounded-lg">
-          <button
-            onClick={() => setOpen(o => !o)}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50"
-          >
-            <span className="font-semibold text-gray-900">{title}</span>
-            <span className="text-gray-500">{open ? '–' : '+'}</span>
-          </button>
-          {open && <div className="p-4">{children}</div>}
+          <div className="w-14 text-right font-semibold tabular-nums">{(Number(mean)||0).toFixed(2)}</div>
         </div>
       );
     }
@@ -111,7 +112,7 @@
 
       // ---------- Aggregations ----------
       const overall = useMemo(() => {
-        if (!submissions.length) return { db: 0, qlik: 0 };
+        if (!submissions.length) return { db: '0.00', qlik: '0.00' };
         const {dbSum, qlSum} = submissions.reduce((acc, s) => {
           const db = parseFloat(s.final_scores?.databricks || 0);
           const ql = parseFloat(s.final_scores?.qlik || 0);
@@ -123,27 +124,23 @@
         };
       }, [submissions]);
 
-      // Map category name -> results row helper
       const findCatRowByName = (s, label) =>
         (s.category_results || []).find(r => r.category === label) || null;
 
       const categoryAgg = useMemo(() => {
-        // Build dict keyed by category label
-        const agg = CATEGORY_META.map(({key, label}) => {
+        return CATEGORY_META.map(({key, label}) => {
           let mCount=0, mSum=0, dbSum=0, qlSum=0, scoreCount=0;
 
           submissions.forEach(s => {
-            // multiplier by key
             const mult = Number(s.category_multipliers?.[key]);
             if (Number.isFinite(mult)) { mSum += mult; mCount++; }
 
-            // averages by label (from category_results)
             const row = findCatRowByName(s, label);
             if (row) {
               const d = Number(row.databricks_avg);
               const q = Number(row.qlik_avg);
               if (Number.isFinite(d)) { dbSum += d; scoreCount++; }
-              if (Number.isFinite(q)) { qlSum += q; /* same count as above */ }
+              if (Number.isFinite(q)) { qlSum += q; }
             }
           });
 
@@ -154,13 +151,10 @@
             meanQlik: scoreCount ? qlSum/scoreCount : 0
           };
         });
-        return agg;
       }, [submissions]);
 
-      // Feature-level averages per category
       const featureAgg = useMemo(() => {
-        // { [categoryLabel]: { [featureName]: { wSum, dbSum, qlSum, n } } }
-        const map = new Map();
+        const map = new Map(); // { catLabel -> Map(feature -> {wSum, dbSum, qlSum, n}) }
         submissions.forEach(s => {
           (s.detailed_scores || []).forEach(cat => {
             const catLabel = cat.category;
@@ -181,7 +175,6 @@
           });
         });
 
-        // Turn into usable structure ordered by CATEGORY_META
         return CATEGORY_META.map(({label}) => {
           const fMap = map.get(label) || new Map();
           const rows = Array.from(fMap.entries()).map(([feature, s]) => ({
@@ -190,7 +183,6 @@
             avgDB:     s.n ? s.dbSum/s.n : 0,
             avgQlik:   s.n ? s.qlSum/s.n : 0
           }));
-          // Preserve the original feature order where possible by sorting alphabetically
           rows.sort((a,b) => a.feature.localeCompare(b.feature));
           return { category: label, rows };
         });
@@ -266,7 +258,7 @@
                     Track scaled 0–2 for relative comparison; numeric value shows true mean (values &gt;2 are capped visually).
                   </div>
                 </div>
-            
+
                 {/* Category Score Averages */}
                 <div className="bg-white border border-gray-200 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">Category Score Averages</h3>
@@ -296,9 +288,8 @@
               </div>
             </Disclosure>
 
-
             {/* Feature Averages per Category */}
-            <div className="space-y-4 mb-8">
+            <div className="space-y-4 mb-8 mt-6">
               {featureAgg.map(block => (
                 <Disclosure key={block.category} title={`Feature Averages — ${block.category}`} defaultOpen={false}>
                   <div className="overflow-x-auto">

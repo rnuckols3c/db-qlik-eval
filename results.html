@@ -18,9 +18,8 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    const { useState, useEffect, useMemo, useRef } = React;
 
-    // Category canon to line up with submission payloads
     const CATEGORY_META = [
       { key: 'coreBIAnalytics', label: 'Core BI: Analytics & Interactivity' },
       { key: 'coreBIViz',      label: 'Core BI: Visualization & Design' },
@@ -33,54 +32,15 @@
       { key: 'product',        label: 'Product & Market' },
     ];
 
-    // Tiny disclosure (collapse/expand) helper
-    function Disclosure({ title, defaultOpen = true, children }) {
-      const [open, setOpen] = useState(defaultOpen);
-      return (
-        <div className="mb-8 border border-gray-200 rounded-lg">
-          <button
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 text-left"
-            onClick={() => setOpen(o => !o)}
-            aria-expanded={open}
-          >
-            <span className="font-semibold text-gray-900">{title}</span>
-            <span className="text-gray-500 text-xl leading-none">{open ? '–' : '+'}</span>
-          </button>
-          {open && <div className="p-4 space-y-6">{children}</div>}
-        </div>
-      );
-    }
-
-    // Visual row for multiplier mean (0..2 track, shows real mean on the right)
-    function MultiplierRow({ label, mean, trackMax = 2 }) {
-      const val = Number(mean) || 0;
-      const clamped = Math.max(0, Math.min(trackMax, val));
-      const pct = (clamped / trackMax) * 100;
-      return (
-        <div className="flex items-center gap-4">
-          <div className="w-[260px] text-gray-900 font-medium truncate">{label}</div>
-          <div className="flex-1 flex items-center gap-2">
-            <span className="text-xs text-gray-500 w-6 text-right">0.0</span>
-            <div className="relative h-2 flex-1 rounded bg-gray-200">
-              {/* midpoint tick @ 1.0 */}
-              <div className="absolute top-1/2 -translate-y-1/2 left-1/2 w-0.5 h-4 bg-gray-400 rounded" />
-              {/* marker */}
-              <div className="absolute -top-1.5" style={{ left: `calc(${pct}% - 6px)` }}>
-                <div className="w-3 h-3 rotate-45 bg-blue-600 rounded-sm shadow" />
-              </div>
-            </div>
-            <span className="text-xs text-gray-500 w-6">2.0</span>
-          </div>
-          <div className="w-14 text-right font-semibold tabular-nums">{val.toFixed(2)}</div>
-        </div>
-      );
-    }
-
     function ResultsDashboard() {
       const [submissions, setSubmissions] = useState([]);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
       const [selectedSubmission, setSelectedSubmission] = useState(null);
+
+      // for "View Details" on slider rows
+      const [highlightKey, setHighlightKey] = useState(null);
+      const tableRef = useRef(null);
 
       useEffect(() => { fetchSubmissions(); }, []);
 
@@ -117,11 +77,9 @@
         };
       }, [submissions]);
 
-      // Helper to find category row by label inside a submission
       const findCatRowByName = (s, label) =>
         (s.category_results || []).find(r => r.category === label) || null;
 
-      // Averages by category (DB/Qlik) + mean multiplier
       const categoryAgg = useMemo(() => {
         return CATEGORY_META.map(({ key, label }) => {
           let mCount = 0, mSum = 0;
@@ -135,8 +93,9 @@
             if (row) {
               const d = Number(row.databricks_avg);
               const q = Number(row.qlik_avg);
-              if (Number.isFinite(d)) { dbSum += d; scoreCount++; }
+              if (Number.isFinite(d)) { dbSum += d; }
               if (Number.isFinite(q)) { qlSum += q; }
+              if (Number.isFinite(d) || Number.isFinite(q)) { scoreCount++; }
             }
           });
 
@@ -149,6 +108,17 @@
           };
         });
       }, [submissions]);
+
+      // Scroll + highlight the requested category row in the table
+      const jumpToCategoryRow = (key) => {
+        setHighlightKey(key);
+        const row = document.getElementById(`cat-row-${key}`);
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // remove highlight after a moment
+          setTimeout(() => setHighlightKey(null), 1500);
+        }
+      };
 
       if (loading) {
         return (
@@ -210,25 +180,62 @@
               </div>
             </div>
 
-            {/* === Category Averages (All Submissions) — COLLAPSIBLE, content unchanged === */}
-            <Disclosure title="Category Averages (All Submissions)" defaultOpen={true}>
-              {/* Category Multiplier Averages (0..2 track, shows real mean at right) */}
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            {/* Category Averages (All Submissions) */}
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">Category Averages (All Submissions)</h2>
+
+              {/* Category Multiplier Averages - slider rows WITH view details button on the right */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Category Multiplier Averages</h3>
+
                 <div className="space-y-3">
-                  {categoryAgg.map((row) => (
-                    <MultiplierRow key={row.key} label={row.label} mean={row.meanMultiplier} />
-                  ))}
+                  {categoryAgg.map((row) => {
+                    const mean = Number(row.meanMultiplier) || 0;
+                    // track 0..2 visually; numeric badge shows true mean
+                    const trackMax = 2;
+                    const clamped = Math.max(0, Math.min(trackMax, mean));
+                    const pct = (clamped / trackMax) * 100;
+                    return (
+                      <div key={row.key} className="flex items-center gap-4">
+                        <div className="w-[260px] text-gray-900 font-medium truncate">{row.label}</div>
+
+                        <div className="flex-1 flex items-center gap-2">
+                          <span className="text-xs text-gray-500 w-6 text-right">0.0</span>
+                          <div className="relative h-2 flex-1 rounded bg-gray-200">
+                            {/* midpoint tick @ 1.0 */}
+                            <div className="absolute top-1/2 -translate-y-1/2 left-1/2 w-0.5 h-4 bg-gray-400 rounded" />
+                            {/* marker */}
+                            <div className="absolute -top-1.5" style={{ left: `calc(${pct}% - 6px)` }}>
+                              <div className="w-3 h-3 rotate-45 bg-blue-600 rounded-sm shadow" />
+                            </div>
+                          </div>
+                          <span className="text-xs text-gray-500 w-6">2.0</span>
+                        </div>
+
+                        <div className="w-16 text-right font-semibold tabular-nums">{mean.toFixed(2)}</div>
+
+                        <div className="w-36 text-right">
+                          <button
+                            onClick={() => jumpToCategoryRow(row.key)}
+                            className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+
                 <div className="mt-2 text-xs text-gray-500">
                   Track scaled 0–2 for relative comparison; numeric value shows true mean (values &gt;2 are capped visually).
                 </div>
               </div>
 
-              {/* Category Score Averages */}
+              {/* Category Score Averages TABLE */}
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Category Score Averages</h3>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto" ref={tableRef}>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b-2 border-gray-300 bg-gray-50">
@@ -240,7 +247,14 @@
                     </thead>
                     <tbody>
                       {categoryAgg.map((r) => (
-                        <tr key={r.key} className="border-b border-gray-200">
+                        <tr
+                          key={r.key}
+                          id={`cat-row-${r.key}`}
+                          className={
+                            "border-b border-gray-200 transition-colors " +
+                            (highlightKey === r.key ? "bg-yellow-50" : "bg-white")
+                          }
+                        >
                           <td className="py-2 px-3">{r.label}</td>
                           <td className="py-2 px-3 text-center" style={{color: '#2563EB'}}>{r.meanDB.toFixed(2)}</td>
                           <td className="py-2 px-3 text-center" style={{color: '#1E40AF'}}>{r.meanQlik.toFixed(2)}</td>
@@ -251,7 +265,7 @@
                   </table>
                 </div>
               </div>
-            </Disclosure>
+            </div>
 
             {submissions.length === 0 ? (
               <div className="text-center py-12 text-gray-500">

@@ -44,44 +44,46 @@
       const winner = dbScore > qlikScore ? 'db' : qlikScore > dbScore ? 'qlik' : 'tie';
 
       return (
-        <div className="flex items-center gap-4 py-2">
+        <div className="flex items-center gap-6 py-2">
           {/* label */}
-          <div className="w-[280px] text-gray-900 font-medium truncate" title={row.label}>{row.label}</div>
+          <div className="w-[320px] text-gray-900 font-medium" title={row.label}>{row.label}</div>
 
           {/* DB/Qlik averages with winner highlighting */}
-          <div className={`w-20 text-right font-bold tabular-nums px-2 py-1 rounded ${winner === 'db' ? 'bg-blue-100' : ''}`} 
-               style={{color: winner === 'db' ? '#2563EB' : '#6B7280'}} title="DB Avg">
+          <div className={`w-24 text-center font-bold tabular-nums px-3 py-1.5 rounded ${winner === 'db' ? 'bg-blue-100' : ''}`} 
+               style={{color: winner === 'db' ? '#2563EB' : '#6B7280'}} title="DB Average">
             {row.meanDB.toFixed(2)}
           </div>
-          <div className={`w-20 text-right font-bold tabular-nums px-2 py-1 rounded ${winner === 'qlik' ? 'bg-blue-100' : ''}`} 
-               style={{color: winner === 'qlik' ? '#1E40AF' : '#6B7280'}} title="Qlik Avg">
+          <div className={`w-24 text-center font-bold tabular-nums px-3 py-1.5 rounded ${winner === 'qlik' ? 'bg-blue-100' : ''}`} 
+               style={{color: winner === 'qlik' ? '#1E40AF' : '#6B7280'}} title="Qlik Average">
             {row.meanQlik.toFixed(2)}
           </div>
 
-          {/* slider - smaller and to the right */}
-          <div className="w-32 flex items-center gap-1">
-            <span className="text-xs text-gray-400 w-5 text-right">0</span>
-            <div className="relative h-2 flex-1 rounded bg-gray-200">
-              {/* midpoint tick @ 1.0 */}
-              <div className="absolute top-1/2 -translate-y-1/2 left-1/2 w-0.5 h-3 bg-gray-400 rounded" />
-              {/* marker */}
-              <div className="absolute -top-1" style={{ left: `calc(${pct}% - 4px)` }}>
-                <div className="w-2 h-2 rotate-45 bg-blue-600 rounded-sm shadow" />
+          {/* slider with integrated average display */}
+          <div className="flex-1 flex items-center gap-3 bg-gray-100 px-4 py-2 rounded-lg border border-gray-200">
+            <span className="text-xs text-gray-500 font-medium">Multiplier:</span>
+            <div className="flex items-center gap-2 flex-1">
+              <span className="text-xs text-gray-400 w-5 text-right">0</span>
+              <div className="relative h-2 flex-1 rounded bg-gray-300">
+                {/* midpoint tick @ 1.0 */}
+                <div className="absolute top-1/2 -translate-y-1/2 left-1/2 w-0.5 h-3 bg-gray-500 rounded" />
+                {/* marker */}
+                <div className="absolute -top-1" style={{ left: `calc(${pct}% - 4px)` }}>
+                  <div className="w-2 h-2 rotate-45 bg-blue-600 rounded-sm shadow" />
+                </div>
               </div>
+              <span className="text-xs text-gray-400 w-5">2</span>
             </div>
-            <span className="text-xs text-gray-400 w-5">2</span>
-          </div>
-
-          {/* numeric mean (true value, not capped) */}
-          <div className="w-14 text-center font-semibold tabular-nums text-gray-700" title="Average multiplier">
-            {mean.toFixed(2)}
+            <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded border border-gray-300">
+              <span className="text-xs text-gray-500 font-medium">Avg:</span>
+              <span className="font-bold text-gray-900 tabular-nums">{mean.toFixed(2)}</span>
+            </div>
           </div>
 
           {/* button */}
-          <div className="w-32 text-right">
+          <div className="w-32">
             <button
               onClick={() => onDetails(row)}
-              className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+              className="w-full px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 font-medium"
             >
               View Details
             </button>
@@ -279,14 +281,13 @@
 
             {/* SINGLE combined section – one line per category */}
             <div className="mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-3">Category Performance Overview</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-3">Category Overview</h2>
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center gap-4 text-xs text-gray-500 mb-1">
-                  <div className="w-[280px]">Category</div>
-                  <div className="w-20 text-right" style={{color:'#2563EB'}}>DB Avg</div>
-                  <div className="w-20 text-right" style={{color:'#1E40AF'}}>Qlik Avg</div>
-                  <div className="w-32 text-center">Multiplier</div>
-                  <div className="w-14 text-center">Avg</div>
+                <div className="flex items-center gap-6 text-xs text-gray-500 mb-2 font-medium">
+                  <div className="w-[320px]">Category</div>
+                  <div className="w-24 text-center" style={{color:'#2563EB'}}>DB Avg</div>
+                  <div className="w-24 text-center" style={{color:'#1E40AF'}}>Qlik Avg</div>
+                  <div className="flex-1 text-center">Category Multiplier</div>
                   <div className="w-32"></div>
                 </div>
 
@@ -296,7 +297,7 @@
                   ))}
                 </div>
 
-                <div className="mt-2 text-xs text-gray-500">
+                <div className="mt-3 text-xs text-gray-500">
                   Higher scores highlighted; multiplier track scaled 0–2 (values &gt;2 capped visually).
                 </div>
               </div>

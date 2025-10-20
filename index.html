@@ -29,14 +29,15 @@
             const [submitError, setSubmitError] = useState('');
             
             const [metaWeights, setMetaWeights] = useState({
-                aiml: 2.0,
-                coreBI: 1.0,
+                aiml: 1.0,
+                coreBIViz: 1.0,
+                coreBIAnalytics: 1.0,
                 dataPlatform: 1.0,
                 governance: 1.0,
                 devEx: 1.0,
                 operations: 1.0,
                 cost: 1.0,
-                product: 2.0
+                product: 1.0
             });
 
             const weightDefinitions = {
@@ -60,21 +61,27 @@
                     ]
                 },
                 {
-                    name: "Core Analytics & BI Functionality",
-                    key: "coreBI",
+                    name: "Core BI: Visualization & Design",
+                    key: "coreBIViz",
                     items: [
-                        { name: "Data Modeling Flexibility", weight: 3, db: '', qlik: '', notes: "Qlik's associative engine vs SQL-based approach" },
                         { name: "Standard Visualizations", weight: 3, db: '', qlik: '', notes: "Basic charts available, some advanced viz types limited in DB" },
-                        { name: "Custom Calculations", weight: 3, db: '', qlik: '', notes: "SQL-based vs robust function library in Qlik" },
-                        { name: "Global Filtering & Interactivity", weight: 3, db: '', qlik: '', notes: "Cross-dashboard filtering, Qlik excels here" },
-                        { name: "Self-Service Analytics Capabilities", weight: 3, db: '', qlik: '', notes: "Business users creating reports without dev help" },
-                        { name: "Drill-through Navigation", weight: 3, db: '', qlik: '', notes: "Cross-dashboard linking capabilities" },
                         { name: "Layout Control & Design", weight: 3, db: '', qlik: '', notes: "Grid-based vs flexible canvas in Qlik" },
                         { name: "Multi-level Visual Containers", weight: 3, db: '', qlik: '', notes: "Cannot create nested container hierarchies in DB" },
                         { name: "Thematics/Styling", weight: 3, db: '', qlik: '', notes: "Standard themes, limited customization vs Qlik" },
                         { name: "Summary Tables/Scoreboards", weight: 3, db: '', qlik: '', notes: "Aggregated views and KPI displays" },
-                        { name: "Accessibility", weight: 3, db: '', qlik: '', notes: "Keyboard navigation, screen readers, WCAG compliance" },
                         { name: "Mobile Responsiveness", weight: 3, db: '', qlik: '', notes: "Dashboard usability on mobile devices" }
+                    ]
+                },
+                {
+                    name: "Core BI: Analytics & Interactivity",
+                    key: "coreBIAnalytics",
+                    items: [
+                        { name: "Data Modeling Flexibility", weight: 3, db: '', qlik: '', notes: "Qlik's associative engine vs SQL-based approach" },
+                        { name: "Custom Calculations", weight: 3, db: '', qlik: '', notes: "SQL-based vs robust function library in Qlik" },
+                        { name: "Global Filtering & Interactivity", weight: 3, db: '', qlik: '', notes: "Cross-dashboard filtering, Qlik excels here" },
+                        { name: "Self-Service Analytics Capabilities", weight: 3, db: '', qlik: '', notes: "Business users creating reports without dev help" },
+                        { name: "Drill-through Navigation", weight: 3, db: '', qlik: '', notes: "Cross-dashboard linking capabilities" },
+                        { name: "Accessibility", weight: 3, db: '', qlik: '', notes: "Keyboard navigation, screen readers, WCAG compliance" }
                     ]
                 },
                 {
@@ -148,7 +155,7 @@
                 }
             ]);
 
-            // ---- helpers & safe setters (added) ----
+            // ---- helpers & safe setters ----
             const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
             const clampInt = (v, lo, hi) => Math.round(clamp(v, lo, hi));
 
@@ -330,12 +337,13 @@
                                 <div className="space-y-2">
                                     {[
                                         { key: 'aiml', label: 'AI/ML Capabilities' },
+                                        { key: 'coreBIViz', label: 'Core BI: Visualization & Design' },
+                                        { key: 'coreBIAnalytics', label: 'Core BI: Analytics & Interactivity' },
                                         { key: 'dataPlatform', label: 'Data Platform' },
-                                        { key: 'governance', label: 'Governance & Security' },
-                                        { key: 'operations', label: 'Operations' }
+                                        { key: 'governance', label: 'Governance & Security' }
                                     ].map(({ key, label }) => (
                                         <div key={key} className="flex items-center gap-2">
-                                            <label className="text-sm text-gray-700 font-medium w-44">{label}</label>
+                                            <label className="text-sm text-gray-700 font-medium w-64">{label}</label>
                                             <input
                                                 type="number"
                                                 step="0.1"
@@ -349,8 +357,8 @@
                                 </div>
                                 <div className="space-y-2">
                                     {[
-                                        { key: 'coreBI', label: 'Core BI' },
                                         { key: 'devEx', label: 'Developer Experience' },
+                                        { key: 'operations', label: 'Operations' },
                                         { key: 'cost', label: 'Cost & Resources' },
                                         { key: 'product', label: 'Product & Market' }
                                     ].map(({ key, label }) => (
@@ -438,7 +446,7 @@
                                         </thead>
                                         <tbody>
                                             {category.items.map((item, itemIdx) => {
-                                                const sumOfWeights = catResult.sumOfWeights; // reuse computed sum
+                                                const sumOfWeights = catResult.sumOfWeights;
                                                 const normalizedWeight = (item.weight / sumOfWeights) * catResult.multiplier;
                                                 const dbWeighted = (Number(item.db) || 0) * normalizedWeight;
                                                 const qlikWeighted = (Number(item.qlik) || 0) * normalizedWeight;

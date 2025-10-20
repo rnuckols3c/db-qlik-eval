@@ -2,36 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Evaluation Results Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
   </style>
-
-  <!-- Load React/ReactDOM/Babel BEFORE the text/babel script -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body class="bg-gray-50">
   <div id="root"></div>
 
-  <!-- IMPORTANT: data-presets so Babel compiles JSX correctly -->
-  <script type="text/babel" data-presets="env,react">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
     const { useState, useEffect, useMemo } = React;
 
-    // --- tiny helpers ---
-    const toNum = (v, d = 0) => {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : d;
-    };
-    const mean = (arr=[]) => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
-    const format2 = (n) => (Number.isFinite(n) ? n.toFixed(2) : '0.00');
-
-    // --- AvgSlider ---
-    // Fixed domain 0..3; 1.0 is visually centered.
-    // Clips out-of-range values and shows a little "+" badge, while ALWAYS printing the true numeric value.
+    // --- Slider component ---
     const AvgSlider = ({ value = 1, domain = { min: 0, max: 2 }, width = 220 }) => {
       const { min, max } = domain;
       const center = 1;
@@ -41,29 +31,28 @@
       const pos = scale(clipped);
       const centerPos = scale(center);
       const overHigh = value > max;
-      const overLow  = value < min;
+      const overLow = value < min;
 
       return (
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 w-8 text-right">{min.toFixed(1)}</span>
 
           <div className="relative h-2" style={{ width }}>
-            {/* track */}
+            {/* Track */}
             <div className="absolute inset-0 rounded-full bg-gray-200"></div>
-            {/* center tick at 1.0 */}
+            {/* Center marker */}
             <div className="absolute top-[-6px] w-0.5 h-5 bg-gray-400" style={{ left: centerPos - 1 }}></div>
-            {/* fill from center to mean */}
+            {/* Fill */}
             <div
               className={`absolute h-2 rounded-full ${value >= 1 ? 'bg-blue-200' : 'bg-gray-300'}`}
               style={{ left: Math.min(centerPos, pos), width: Math.abs(pos - centerPos) }}
             ></div>
-            {/* mean marker (diamond) */}
+            {/* Diamond marker */}
             <div
               className={`absolute -top-2 h-4 w-4 rotate-45 ${value >= 1 ? 'bg-blue-600' : 'bg-gray-600'}`}
               style={{ left: pos - 8 }}
-              title={`mean ${value.toFixed(2)}${(overHigh || overLow) ? ' (clipped)' : ''}`}
             ></div>
-            {/* overflow indicator */}
+            {/* Overflow indicator */}
             {(overHigh || overLow) && (
               <div
                 className="absolute -top-2 text-[10px] font-bold px-1 rounded bg-yellow-300 text-gray-900"
@@ -76,7 +65,6 @@
           </div>
 
           <span className="text-xs text-gray-500 w-8">{max.toFixed(1)}</span>
-          {/* numeric value always visible */}
           <span
             className={`ml-2 text-sm font-semibold ${
               value > 1 ? 'text-blue-700' : value < 1 ? 'text-gray-700' : 'text-gray-500'
@@ -88,101 +76,61 @@
       );
     };
 
+    // --- Main dashboard ---
     function ResultsDashboard() {
       const [submissions, setSubmissions] = useState([]);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
       const [selectedSubmission, setSelectedSubmission] = useState(null);
-      const [expandedCat, setExpandedCat] = useState({}); // drilldown visibility
 
-      useEffect(() => { fetchSubmissions(); }, []);
+      useEffect(() => {
+        fetchSubmissions();
+      }, []);
 
       const fetchSubmissions = async () => {
-        setLoading(true);
-        setError(null);
         try {
           const response = await fetch('https://formspree.io/api/0/forms/xkgqyqeo/submissions', {
             headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Bearer ba284415ed9d244092a65483d0f50246996fd5b1'
-            }
+              Accept: 'application/json',
+              Authorization: 'Bearer ba284415ed9d244092a65483d0f50246996fd5b1',
+            },
           });
-          if (!response.ok) throw new Error(`Failed to fetch submissions: ${response.status} ${response.statusText}`);
+
+          if (!response.ok) {
+            throw new Error(`Failed to fetch submissions: ${response.status} ${response.statusText}`);
+          }
+
           const data = await response.json();
-          setSubmissions(Array.isArray(data.submissions) ? data.submissions : []);
+          setSubmissions(data.submissions || []);
+          setLoading(false);
         } catch (err) {
-          console.error(err);
           setError(err.message);
-        } finally {
           setLoading(false);
         }
       };
 
-      // overall averages
-      const overallAverages = useMemo(() => {
-        if (!submissions.length) return { db: '0.00', qlik: '0.00' };
-        const totals = submissions.reduce((acc, sub) => {
-          acc.db   += toNum(sub?.final_scores?.databricks);
-          acc.qlik += toNum(sub?.final_scores?.qlik);
-          return acc;
-        }, { db: 0, qlik: 0 });
+      const calculateAverages = () => {
+        if (submissions.length === 0) return { db: 0, qlik: 0 };
+
+        const totals = submissions.reduce(
+          (acc, sub) => {
+            const dbScore = parseFloat(sub.final_scores?.databricks || 0);
+            const qlikScore = parseFloat(sub.final_scores?.qlik || 0);
+            return {
+              db: acc.db + dbScore,
+              qlik: acc.qlik + qlikScore,
+            };
+          },
+          { db: 0, qlik: 0 }
+        );
+
         return {
-          db: format2(totals.db / submissions.length),
-          qlik: format2(totals.qlik / submissions.length)
+          db: (totals.db / submissions.length).toFixed(2),
+          qlik: (totals.qlik / submissions.length).toFixed(2),
         };
-      }, [submissions]);
+      };
 
-      // aggregates across submissions for category + feature averages and multipliers
-      const aggregates = useMemo(() => {
-        const catAggs = {};
-        for (const sub of submissions) {
-          // category-level stats
-          for (const c of sub?.category_results || []) {
-            const name = c.category || 'Uncategorized';
-            if (!catAggs[name]) catAggs[name] = { multipliers: [], dbAvgs: [], qlikAvgs: [], weightedDB: [], weightedQlik: [], features: {} };
-            catAggs[name].multipliers.push(toNum(c.multiplier));
-            catAggs[name].dbAvgs.push(toNum(c.databricks_avg));
-            catAggs[name].qlikAvgs.push(toNum(c.qlik_avg));
-            catAggs[name].weightedDB.push(toNum(c.databricks_weighted));
-            catAggs[name].weightedQlik.push(toNum(c.qlik_weighted));
-          }
-          // feature-level stats
-          for (const cat of sub?.detailed_scores || []) {
-            const catName = cat.category || 'Uncategorized';
-            if (!catAggs[catName]) catAggs[catName] = { multipliers: [], dbAvgs: [], qlikAvgs: [], weightedDB: [], weightedQlik: [], features: {} };
-            for (const item of cat.items || []) {
-              const fName = item.feature || 'Unnamed Feature';
-              if (!catAggs[catName].features[fName]) catAggs[catName].features[fName] = { count: 0, weights: [], db: [], qlik: [] };
-              const f = catAggs[catName].features[fName];
-              f.count++;
-              f.weights.push(toNum(item.weight));
-              f.db.push(toNum(item.databricks_score));
-              f.qlik.push(toNum(item.qlik_score));
-            }
-          }
-        }
-
-        const rows = Object.entries(catAggs).map(([category, agg]) => ({
-          category,
-          count: Math.max(agg.dbAvgs.length, agg.qlikAvgs.length, agg.multipliers.length),
-          multiplierMean: mean(agg.multipliers),
-          dbAvg: mean(agg.dbAvgs),
-          qlikAvg: mean(agg.qlikAvgs),
-          dbWeighted: mean(agg.weightedDB),
-          qlikWeighted: mean(agg.weightedQlik),
-          features: Object.entries(agg.features).map(([feature, fagg]) => ({
-            feature,
-            count: fagg.count,
-            weightAvg: mean(fagg.weights),
-            dbAvg: mean(fagg.db),
-            qlikAvg: mean(fagg.qlik)
-          }))
-        }));
-
-        // sort by multiplier mean desc, then name
-        rows.sort((a,b)=> (b.multiplierMean - a.multiplierMean) || a.category.localeCompare(b.category));
-        return rows;
-      }, [submissions]);
+      const averages = calculateAverages();
 
       if (loading) {
         return (
@@ -200,7 +148,12 @@
             <div className="bg-red-50 border border-red-200 rounded-lg p-6">
               <h2 className="text-xl font-bold text-red-900 mb-2">Error Loading Data</h2>
               <p className="text-red-700">{error}</p>
-              <button onClick={fetchSubmissions} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Retry</button>
+              <button
+                onClick={fetchSubmissions}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Retry
+              </button>
             </div>
           </div>
         );
@@ -214,7 +167,12 @@
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Evaluation Results Dashboard</h1>
                 <p className="text-gray-600">Databricks vs Qlik - Response Summary</p>
               </div>
-              <button onClick={fetchSubmissions} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">Refresh Data</button>
+              <button
+                onClick={fetchSubmissions}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              >
+                Refresh Data
+              </button>
             </div>
 
             <div className="grid grid-cols-3 gap-6 mb-6">
@@ -222,258 +180,116 @@
                 <div className="text-sm text-gray-600 mb-1">Total Responses</div>
                 <div className="text-4xl font-bold text-gray-900">{submissions.length}</div>
               </div>
-              <div className="bg-blue-50 p-4 rounded-lg border-2" style={{borderColor: '#2563EB'}}>
+              <div className="bg-blue-50 p-4 rounded-lg border-2" style={{ borderColor: '#2563EB' }}>
                 <div className="text-sm text-gray-600 mb-1">Average DB Score</div>
-                <div className="text-4xl font-bold" style={{color: '#2563EB'}}>{overallAverages.db}</div>
+                <div className="text-4xl font-bold" style={{ color: '#2563EB' }}>
+                  {averages.db}
+                </div>
                 <div className="text-sm text-gray-500 mt-1">out of 10.0</div>
               </div>
-              <div className="bg-blue-50 p-4 rounded-lg border-2" style={{borderColor: '#60A5FA'}}>
+              <div className="bg-blue-50 p-4 rounded-lg border-2" style={{ borderColor: '#60A5FA' }}>
                 <div className="text-sm text-gray-600 mb-1">Average Qlik Score</div>
-                <div className="text-4xl font-bold" style={{color: '#1E40AF'}}>{overallAverages.qlik}</div>
+                <div className="text-4xl font-bold" style={{ color: '#1E40AF' }}>
+                  {averages.qlik}
+                </div>
                 <div className="text-sm text-gray-500 mt-1">out of 10.0</div>
               </div>
             </div>
 
-            {/* Category aggregates with centered average slider */}
-            <div className="mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-3">Category Averages (All Submissions)</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b-2 border-gray-300 bg-gray-50">
-                      <th className="text-left py-2 px-3 font-semibold text-gray-700">Category</th>
-                      <th className="text-center py-2 px-3 font-semibold text-gray-700">Responses</th>
-                      <th className="text-center py-2 px-3 font-semibold" style={{color: '#2563EB'}}>DB Avg</th>
-                      <th className="text-center py-2 px-3 font-semibold" style={{color: '#1E40AF'}}>Qlik Avg</th>
-                      <th className="text-center py-2 px-3 font-semibold" style={{color: '#2563EB'}}>DB Weighted (avg)</th>
-                      <th className="text-center py-2 px-3 font-semibold" style={{color: '#1E40AF'}}>Qlik Weighted (avg)</th>
-                      <th className="text-left py-2 px-3 font-semibold text-gray-700">Multiplier Average</th>
-                      <th className="text-center py-2 px-3 font-semibold text-gray-700">Drill-down</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {aggregates.map((row) => (
-                      <tr key={row.category} className="border-b border-gray-200">
-                        <td className="py-2 px-3 text-gray-900">{row.category}</td>
-                        <td className="py-2 px-3 text-center text-gray-600">{row.count}</td>
-                        <td className="py-2 px-3 text-center" style={{color: '#2563EB'}}>{format2(row.dbAvg)}</td>
-                        <td className="py-2 px-3 text-center" style={{color: '#1E40AF'}}>{format2(row.qlikAvg)}</td>
-                        <td className="py-2 px-3 text-center font-semibold" style={{color: '#2563EB'}}>{format2(row.dbWeighted)}</td>
-                        <td className="py-2 px-3 text-center font-semibold" style={{color: '#1E40AF'}}>{format2(row.qlikWeighted)}</td>
-                        <td className="py-2 px-3">
-                          <AvgSlider value={row.multiplierMean} />
-                        </td>
-                        <td className="py-2 px-3 text-center">
-                          <button
-                            onClick={() => setExpandedCat(prev => ({ ...prev, [row.category]: !prev[row.category] }))}
-                            className="px-3 py-1 bg-gray-800 text-white rounded text-xs hover:bg-gray-900"
-                          >
-                            {expandedCat[row.category] ? 'Hide' : 'View'} Features
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Feature drilldowns */}
-              <div className="mt-4 space-y-4">
-                {aggregates.map(row =>
-                  expandedCat[row.category] ? (
-                    <div key={row.category} className="border border-gray-200 rounded-lg">
-                      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{row.category} — Feature Averages (All Submissions)</h3>
-                          <p className="text-xs text-gray-600">Averages across every evaluator who scored this feature.</p>
-                        </div>
-                        <button
-                          onClick={() => setExpandedCat(prev => ({ ...prev, [row.category]: false }))}
-                          className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
-                          aria-label="Collapse"
-                          title="Collapse"
-                        >×</button>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="border-b border-gray-300 bg-gray-50">
-                              <th className="text-left py-2 px-3 font-semibold text-gray-700">Feature</th>
-                              <th className="text-center py-2 px-3 font-semibold text-gray-700">Responses</th>
-                              <th className="text-center py-2 px-3 font-semibold text-gray-700">Avg Weight (1–5)</th>
-                              <th className="text-center py-2 px-3 font-semibold" style={{color: '#2563EB'}}>DB Avg</th>
-                              <th className="text-center py-2 px-3 font-semibold" style={{color: '#1E40AF'}}>Qlik Avg</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {row.features
-                              .slice()
-                              .sort((a,b)=> b.weightAvg - a.weightAvg)
-                              .map(f => (
-                                <tr key={f.feature} className="border-b border-gray-100">
-                                  <td className="py-2 px-3 text-gray-900">{f.feature}</td>
-                                  <td className="py-2 px-3 text-center text-gray-600">{f.count}</td>
-                                  <td className="py-2 px-3 text-center text-gray-700">{format2(f.weightAvg)}</td>
-                                  <td className="py-2 px-3 text-center font-semibold" style={{color: '#2563EB'}}>{format2(f.dbAvg)}</td>
-                                  <td className="py-2 px-3 text-center font-semibold" style={{color: '#1E40AF'}}>{format2(f.qlikAvg)}</td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ) : null
-                )}
+            {/* --- Category multiplier section (example) --- */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-8">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Category Multiplier Averages</h2>
+              <div className="space-y-3">
+                {/* Example usage */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-800">Core BI: Analytics & Interactivity</span>
+                  <AvgSlider value={1.35} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-800">Data Platform & Architecture</span>
+                  <AvgSlider value={0.9} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-800">AI/ML Capabilities & Future Readiness</span>
+                  <AvgSlider value={2.1} />
+                </div>
               </div>
             </div>
 
-            {/* Raw submissions table */}
+            {/* --- Individual Evaluations --- */}
             {submissions.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">No submissions yet. Share your evaluation form to start collecting responses!</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b-2 border-gray-300 bg-gray-50">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
-                      <th className="text-center py-3 px-4 font-semibold" style={{color: '#2563EB'}}>DB Score</th>
-                      <th className="text-center py-3 px-4 font-semibold" style={{color: '#1E40AF'}}>Qlik Score</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700">Date</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700">Details</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {submissions.map((submission, idx) => {
-                      const dbScore = toNum(submission?.final_scores?.databricks);
-                      const qlikScore = toNum(submission?.final_scores?.qlik);
-                      const date = new Date(submission?.submission_date || submission?._date || Date.now()).toLocaleDateString();
-                      return (
-                        <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
-                          <td className="py-3 px-4 text-gray-900">{submission?.submitter_name || '—'}</td>
-                          <td className="py-3 px-4 text-gray-600">{submission?.submitter_email || '—'}</td>
-                          <td className="py-3 px-4 text-center font-semibold" style={{color: '#2563EB'}}>{format2(dbScore)}</td>
-                          <td className="py-3 px-4 text-center font-semibold" style={{color: '#1E40AF'}}>{format2(qlikScore)}</td>
-                          <td className="py-3 px-4 text-center text-gray-600 text-sm">{date}</td>
-                          <td className="py-3 px-4 text-center">
-                            <button onClick={() => setSelectedSubmission(submission)} className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">View Details</button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="text-center py-12 text-gray-500">
+                No submissions yet. Share your evaluation form to start collecting responses!
               </div>
-            )}
+            ) : (
+              <>
+                <hr className="my-8 border-gray-300" />
 
-          </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Individual Evaluations</h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  Detailed list of all submissions below. Click{' '}
+                  <span className="font-medium text-blue-700">View Details</span> to drill into category and
+                  feature-level scores.
+                </p>
 
-          {/* Submission modal */}
-          {selectedSubmission && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-              <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{(selectedSubmission?.submitter_name || 'Evaluator') + "'s"} Evaluation</h2>
-                    <p className="text-gray-600">{selectedSubmission?.submitter_email || ''}</p>
-                  </div>
-                  <button onClick={() => setSelectedSubmission(null)} className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none">×</button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-blue-50 p-4 rounded-lg border" style={{borderColor: '#2563EB'}}>
-                    <div className="text-sm text-gray-600 mb-1">Databricks Score</div>
-                    <div className="text-3xl font-bold" style={{color: '#2563EB'}}>{format2(toNum(selectedSubmission?.final_scores?.databricks))}</div>
-                  </div>
-                  <div className="bg-blue-50 p-4 rounded-lg border" style={{borderColor: '#60A5FA'}}>
-                    <div className="text-sm text-gray-600 mb-1">Qlik Score</div>
-                    <div className="text-3xl font-bold" style={{color: '#1E40AF'}}>{format2(toNum(selectedSubmission?.final_scores?.qlik))}</div>
-                  </div>
-                </div>
-
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Category Results</h3>
-                <div className="overflow-x-auto mb-6">
-                  <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
                     <thead>
                       <tr className="border-b-2 border-gray-300 bg-gray-50">
-                        <th className="text-left py-2 px-3 font-semibold text-gray-700">Category</th>
-                        <th className="text-center py-2 px-3 font-semibold text-gray-700">Multiplier</th>
-                        <th className="text-center py-2 px-3 font-semibold" style={{color: '#2563EB'}}>DB Avg</th>
-                        <th className="text-center py-2 px-3 font-semibold" style={{color: '#1E40AF'}}>Qlik Avg</th>
-                        <th className="text-center py-2 px-3 font-semibold" style={{color: '#2563EB'}}>DB Weighted</th>
-                        <th className="text-center py-2 px-3 font-semibold" style={{color: '#1E40AF'}}>Qlik Weighted</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
+                        <th className="text-center py-3 px-4 font-semibold" style={{ color: '#2563EB' }}>
+                          DB Score
+                        </th>
+                        <th className="text-center py-3 px-4 font-semibold" style={{ color: '#1E40AF' }}>
+                          Qlik Score
+                        </th>
+                        <th className="text-center py-3 px-4 font-semibold text-gray-700">Date</th>
+                        <th className="text-center py-3 px-4 font-semibold text-gray-700">Details</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(selectedSubmission?.category_results || []).map((cat, idx) => (
-                        <tr key={idx} className="border-b border-gray-200">
-                          <td className="py-2 px-3 text-gray-900">{cat.category}</td>
-                          <td className="py-2 px-3 text-center text-gray-600">{cat.multiplier}×</td>
-                          <td className="py-2 px-3 text-center" style={{color: '#2563EB'}}>{cat.databricks_avg}</td>
-                          <td className="py-2 px-3 text-center" style={{color: '#1E40AF'}}>{cat.qlik_avg}</td>
-                          <td className="py-2 px-3 text-center font-semibold" style={{color: '#2563EB'}}>{cat.databricks_weighted}</td>
-                          <td className="py-2 px-3 text-center font-semibold" style={{color: '#1E40AF'}}>{cat.qlik_weighted}</td>
-                        </tr>
-                      ))}
+                      {submissions.map((submission, idx) => {
+                        const dbScore = parseFloat(submission.final_scores?.databricks || 0);
+                        const qlikScore = parseFloat(submission.final_scores?.qlik || 0);
+                        const date = new Date(
+                          submission.submission_date || submission._date
+                        ).toLocaleDateString();
+
+                        return (
+                          <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
+                            <td className="py-3 px-4 text-gray-900">{submission.submitter_name}</td>
+                            <td className="py-3 px-4 text-gray-600">{submission.submitter_email}</td>
+                            <td className="py-3 px-4 text-center font-semibold" style={{ color: '#2563EB' }}>
+                              {dbScore.toFixed(2)}
+                            </td>
+                            <td className="py-3 px-4 text-center font-semibold" style={{ color: '#1E40AF' }}>
+                              {qlikScore.toFixed(2)}
+                            </td>
+                            <td className="py-3 px-4 text-center text-gray-600 text-sm">{date}</td>
+                            <td className="py-3 px-4 text-center">
+                              <button
+                                onClick={() => setSelectedSubmission(submission)}
+                                className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                              >
+                                View Details
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
-
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Detailed Feature Scores</h3>
-                <div className="space-y-4">
-                  {(selectedSubmission?.detailed_scores || []).map((category, catIdx) => (
-                    <div key={catIdx} className="border border-gray-200 rounded-lg p-4">
-                      <h4 className="font-semibold text-gray-900 mb-2">{category.category}</h4>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="border-b border-gray-300 bg-gray-50">
-                              <th className="text-left py-1 px-2 font-semibold text-gray-700">Feature</th>
-                              <th className="text-center py-1 px-2 font-semibold text-gray-700">Weight</th>
-                              <th className="text-center py-1 px-2 font-semibold" style={{color: '#2563EB'}}>DB</th>
-                              <th className="text-center py-1 px-2 font-semibold" style={{color: '#1E40AF'}}>Qlik</th>
-                              <th className="text-left py-1 px-2 font-semibold text-gray-700">Notes</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(category.items || []).map((item, itemIdx) => (
-                              <tr key={itemIdx} className="border-b border-gray-100">
-                                <td className="py-1 px-2 text-gray-900">{item.feature}</td>
-                                <td className="py-1 px-2 text-center text-gray-600">{item.weight}</td>
-                                <td className="py-1 px-2 text-center font-semibold" style={{color: '#2563EB'}}>{item.databricks_score}</td>
-                                <td className="py-1 px-2 text-center font-semibold" style={{color: '#1E40AF'}}>{item.qlik_score}</td>
-                                <td className="py-1 px-2 text-gray-600 text-xs">{item.notes}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-6 flex justify-end">
-                  <button onClick={()=>setSelectedSubmission(null)} className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">Close</button>
-                </div>
-              </div>
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </div>
       );
     }
 
-    // Safe render with fallback
-    try {
-      const rootEl = document.getElementById('root');
-      const root = ReactDOM?.createRoot ? ReactDOM.createRoot(rootEl) : null;
-      if (root) root.render(<ResultsDashboard />);
-      else if (ReactDOM?.render) ReactDOM.render(<ResultsDashboard />, rootEl);
-      else rootEl.innerHTML = '<div style="padding:16px;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:8px;">ReactDOM failed to load.</div>';
-    } catch (e) {
-      console.error(e);
-      const rootEl = document.getElementById('root');
-      rootEl.innerHTML = '<div style="padding:16px;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:8px;">A runtime error prevented the dashboard from rendering. Open the console for details.</div>';
-    }
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<ResultsDashboard />);
   </script>
 </body>
 </html>

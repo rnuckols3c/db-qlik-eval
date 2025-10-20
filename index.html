@@ -28,12 +28,13 @@
             const [submitSuccess, setSubmitSuccess] = useState(false);
             const [submitError, setSubmitError] = useState('');
             
+            // All multipliers set to 1.0 by default
             const [metaWeights, setMetaWeights] = useState({
-                aiml: 1.0,
-                coreBIViz: 1.0,
                 coreBIAnalytics: 1.0,
+                coreBIViz: 1.0,
                 dataPlatform: 1.0,
                 governance: 1.0,
+                aiml: 1.0,
                 devEx: 1.0,
                 operations: 1.0,
                 cost: 1.0,
@@ -48,16 +49,27 @@
                 5: { label: "Critical", description: "Essential feature, major decision driver" }
             };
 
+            // Categories reordered per your requested priority:
+            // 1) Core BI: Analytics & Interactivity
+            // 2) Core BI: Visualization & Design
+            // 3) Data Platform & Architecture
+            // 4) Governance & Security
+            // 5) AI/ML Capabilities & Future Readiness
+            // 6) Developer Experience & Velocity
+            // 7) Operations & Scalability
+            // 8) Cost & Resources
+            // 9) Product & Market
             const [categories, setCategories] = useState([
                 {
-                    name: "AI/ML Capabilities & Future Readiness",
-                    key: "aiml",
+                    name: "Core BI: Analytics & Interactivity",
+                    key: "coreBIAnalytics",
                     items: [
-                        { name: "ML Model Integration", weight: 3, db: '', qlik: '', notes: "Native Python/ML frameworks, notebooks, MLflow integration" },
-                        { name: "Feature Engineering Pipeline", weight: 3, db: '', qlik: '', notes: "Delta Lake, Unity Catalog for feature stores" },
-                        { name: "Advanced Analytics (Statistical/Predictive)", weight: 3, db: '', qlik: '', notes: "Built-in ML capabilities, AutoML" },
-                        { name: "Conversational AI / NLQ", weight: 3, db: '', qlik: '', notes: "Genie assessment ongoing" },
-                        { name: "Real-time ML Inference", weight: 3, db: '', qlik: '', notes: "Streaming + model serving capabilities" }
+                        { name: "Data Modeling Flexibility", weight: 3, db: '', qlik: '', notes: "Qlik's associative engine vs SQL-based approach" },
+                        { name: "Custom Calculations", weight: 3, db: '', qlik: '', notes: "SQL-based vs robust function library in Qlik" },
+                        { name: "Global Filtering & Interactivity", weight: 3, db: '', qlik: '', notes: "Cross-dashboard filtering, Qlik excels here" },
+                        { name: "Self-Service Analytics Capabilities", weight: 3, db: '', qlik: '', notes: "Business users creating reports without dev help" },
+                        { name: "Drill-through Navigation", weight: 3, db: '', qlik: '', notes: "Cross-dashboard linking capabilities" },
+                        { name: "Accessibility", weight: 3, db: '', qlik: '', notes: "Keyboard navigation, screen readers, WCAG compliance" }
                     ]
                 },
                 {
@@ -73,23 +85,11 @@
                     ]
                 },
                 {
-                    name: "Core BI: Analytics & Interactivity",
-                    key: "coreBIAnalytics",
-                    items: [
-                        { name: "Data Modeling Flexibility", weight: 3, db: '', qlik: '', notes: "Qlik's associative engine vs SQL-based approach" },
-                        { name: "Custom Calculations", weight: 3, db: '', qlik: '', notes: "SQL-based vs robust function library in Qlik" },
-                        { name: "Global Filtering & Interactivity", weight: 3, db: '', qlik: '', notes: "Cross-dashboard filtering, Qlik excels here" },
-                        { name: "Self-Service Analytics Capabilities", weight: 3, db: '', qlik: '', notes: "Business users creating reports without dev help" },
-                        { name: "Drill-through Navigation", weight: 3, db: '', qlik: '', notes: "Cross-dashboard linking capabilities" },
-                        { name: "Accessibility", weight: 3, db: '', qlik: '', notes: "Keyboard navigation, screen readers, WCAG compliance" }
-                    ]
-                },
-                {
                     name: "Data Platform & Architecture",
                     key: "dataPlatform",
                     items: [
                         { name: "Batch/Daily Data Refresh", weight: 3, db: '', qlik: '', notes: "Simplified pipeline refresh, native orchestration" },
-                        { name: "Data Governance (Unity Catalog)", weight: 3, db: '', qlik: '', notes: "Centralized governance, fine-grained access control" },
+                        { name: "Data Governance", weight: 3, db: '', qlik: '', notes: "Centralized governance, fine-grained access control" },
                         { name: "Concurrency/Scalability", weight: 3, db: '', qlik: '', notes: "Load testing discussions needed" },
                         { name: "Query Performance at Scale", weight: 3, db: '', qlik: '', notes: "Dashboard speed with large datasets" },
                         { name: "Real-time Data Refresh", weight: 3, db: '', qlik: '', notes: "Streaming and near-real-time capabilities" },
@@ -105,6 +105,17 @@
                         { name: "Data Residency & Encryption", weight: 3, db: '', qlik: '', notes: "Data location control, encryption at rest/in transit" },
                         { name: "Cross-tenant Isolation", weight: 3, db: '', qlik: '', notes: "Workspace isolation, data separation" },
                         { name: "Export/Print/Email Governance", weight: 3, db: '', qlik: '', notes: "Control over data distribution and sharing" }
+                    ]
+                },
+                {
+                    name: "AI/ML Capabilities & Future Readiness",
+                    key: "aiml",
+                    items: [
+                        { name: "ML Model Integration", weight: 3, db: '', qlik: '', notes: "Native Python/ML frameworks, notebooks, MLflow integration" },
+                        { name: "Feature Engineering Pipeline", weight: 3, db: '', qlik: '', notes: "Delta Lake, Unity Catalog for feature stores" },
+                        { name: "Advanced Analytics (Statistical/Predictive)", weight: 3, db: '', qlik: '', notes: "Built-in ML capabilities, AutoML" },
+                        { name: "Conversational AI / NLQ", weight: 3, db: '', qlik: '', notes: "Genie assessment ongoing" },
+                        { name: "Real-time ML Inference", weight: 3, db: '', qlik: '', notes: "Streaming + model serving capabilities" }
                     ]
                 },
                 {
@@ -336,11 +347,11 @@
                             <div className="flex gap-16">
                                 <div className="space-y-2">
                                     {[
-                                        { key: 'aiml', label: 'AI/ML Capabilities' },
-                                        { key: 'coreBIViz', label: 'Core BI: Visualization & Design' },
                                         { key: 'coreBIAnalytics', label: 'Core BI: Analytics & Interactivity' },
-                                        { key: 'dataPlatform', label: 'Data Platform' },
-                                        { key: 'governance', label: 'Governance & Security' }
+                                        { key: 'coreBIViz', label: 'Core BI: Visualization & Design' },
+                                        { key: 'dataPlatform', label: 'Data Platform & Architecture' },
+                                        { key: 'governance', label: 'Governance & Security' },
+                                        { key: 'aiml', label: 'AI/ML Capabilities & Future Readiness' },
                                     ].map(({ key, label }) => (
                                         <div key={key} className="flex items-center gap-2">
                                             <label className="text-sm text-gray-700 font-medium w-64">{label}</label>
@@ -357,13 +368,13 @@
                                 </div>
                                 <div className="space-y-2">
                                     {[
-                                        { key: 'devEx', label: 'Developer Experience' },
-                                        { key: 'operations', label: 'Operations' },
+                                        { key: 'devEx', label: 'Developer Experience & Velocity' },
+                                        { key: 'operations', label: 'Operations & Scalability' },
                                         { key: 'cost', label: 'Cost & Resources' },
-                                        { key: 'product', label: 'Product & Market' }
+                                        { key: 'product', label: 'Product & Market' },
                                     ].map(({ key, label }) => (
                                         <div key={key} className="flex items-center gap-2">
-                                            <label className="text-sm text-gray-700 font-medium w-44">{label}</label>
+                                            <label className="text-sm text-gray-700 font-medium w-64">{label}</label>
                                             <input
                                                 type="number"
                                                 step="0.1"
@@ -450,8 +461,9 @@
                                                 const normalizedWeight = (item.weight / sumOfWeights) * catResult.multiplier;
                                                 const dbWeighted = (Number(item.db) || 0) * normalizedWeight;
                                                 const qlikWeighted = (Number(item.qlik) || 0) * normalizedWeight;
-                                                const winner = (Number(item.db) || 0) > (Number(item.qlik) || 0) ? 'db' :
-                                                               (Number(item.qlik) || 0) > (Number(item.db) || 0) ? 'qlik' : 'tie';
+                                                const dbNum = Number(item.db) || 0;
+                                                const qlNum = Number(item.qlik) || 0;
+                                                const winner = dbNum > qlNum ? 'db' : qlNum > dbNum ? 'qlik' : 'tie';
                                                 
                                                 return (
                                                     <tr key={itemIdx} className="border-b border-gray-200 hover:bg-gray-50">
@@ -669,3 +681,4 @@
     </script>
 </body>
 </html>
+

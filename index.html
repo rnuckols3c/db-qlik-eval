@@ -56,18 +56,18 @@
             // 4) Governance & Security
             // 5) AI/ML Capabilities & Future Readiness
             // 6) Developer Experience & Velocity
-            // 7) Operations & Scalability
+            // 7) Operations & Scalability (refined to 6 items)
             // 8) Cost & Resources
-            // 9) Product & Market
+            // 9) Product & Market (expanded to 5 items)
             const [categories, setCategories] = useState([
                 {
                     name: "Core BI: Analytics & Interactivity",
                     key: "coreBIAnalytics",
                     items: [
                         { name: "Data Modeling Flexibility", weight: 3, db: '', qlik: '', notes: "Qlik's associative engine vs SQL-based approach" },
-                        { name: "Custom Calculations", weight: 3, db: '', qlik: '', notes: "SQL-based vs robust function library in Qlik" },
-                        { name: "Global Filtering & Interactivity", weight: 3, db: '', qlik: '', notes: "Cross-dashboard filtering, Qlik excels here" },
-                        { name: "Self-Service Analytics Capabilities", weight: 3, db: '', qlik: '', notes: "Business users creating reports without dev help" },
+                        { name: "Custom Calculations", weight: 3, db: '', qlik: '', notes: "SQL-based vs function library/set expressions in Qlik" },
+                        { name: "Global Filtering & Interactivity", weight: 3, db: '', qlik: '', notes: "Cross-dashboard filtering" },
+                        { name: "Self-Service Analytics Capabilities", weight: 3, db: '', qlik: '', notes: "Interactivity of Dashboards" },
                         { name: "Drill-through Navigation", weight: 3, db: '', qlik: '', notes: "Cross-dashboard linking capabilities" },
                         { name: "Accessibility", weight: 3, db: '', qlik: '', notes: "Keyboard navigation, screen readers, WCAG compliance" }
                     ]
@@ -76,10 +76,10 @@
                     name: "Core BI: Visualization & Design",
                     key: "coreBIViz",
                     items: [
-                        { name: "Standard Visualizations", weight: 3, db: '', qlik: '', notes: "Basic charts available, some advanced viz types limited in DB" },
-                        { name: "Layout Control & Design", weight: 3, db: '', qlik: '', notes: "Grid-based vs flexible canvas in Qlik" },
-                        { name: "Multi-level Visual Containers", weight: 3, db: '', qlik: '', notes: "Cannot create nested container hierarchies in DB" },
-                        { name: "Thematics/Styling", weight: 3, db: '', qlik: '', notes: "Standard themes, limited customization vs Qlik" },
+                        { name: "Standard Visualizations", weight: 3, db: '', qlik: '', notes: "Basic charts availability" },
+                        { name: "Layout Control & Design", weight: 3, db: '', qlik: '', notes: "Grid-based vs flexible canvas" },
+                        { name: "Multi-level Visual Containers", weight: 3, db: '', qlik: '', notes: "Nested container hierarchies" },
+                        { name: "Thematics/Styling", weight: 3, db: '', qlik: '', notes: "Standard themes and customization" },
                         { name: "Summary Tables/Scoreboards", weight: 3, db: '', qlik: '', notes: "Aggregated views and KPI displays" },
                         { name: "Mobile Responsiveness", weight: 3, db: '', qlik: '', notes: "Dashboard usability on mobile devices" }
                     ]
@@ -90,7 +90,7 @@
                     items: [
                         { name: "Batch/Daily Data Refresh", weight: 3, db: '', qlik: '', notes: "Simplified pipeline refresh, native orchestration" },
                         { name: "Data Governance", weight: 3, db: '', qlik: '', notes: "Centralized governance, fine-grained access control" },
-                        { name: "Concurrency/Scalability", weight: 3, db: '', qlik: '', notes: "Load testing discussions needed" },
+                        { name: "Concurrency/Scalability", weight: 3, db: '', qlik: '', notes: "Performance with 25+ users" },
                         { name: "Query Performance at Scale", weight: 3, db: '', qlik: '', notes: "Dashboard speed with large datasets" },
                         { name: "Real-time Data Refresh", weight: 3, db: '', qlik: '', notes: "Streaming and near-real-time capabilities" },
                         { name: "Data Lineage & Observability", weight: 3, db: '', qlik: '', notes: "Built-in lineage tracking" }
@@ -111,10 +111,10 @@
                     name: "AI/ML Capabilities & Future Readiness",
                     key: "aiml",
                     items: [
-                        { name: "ML Model Integration", weight: 3, db: '', qlik: '', notes: "Native Python/ML frameworks, notebooks, MLflow integration" },
-                        { name: "Feature Engineering Pipeline", weight: 3, db: '', qlik: '', notes: "Delta Lake, Unity Catalog for feature stores" },
+                        { name: "ML Model Integration", weight: 3, db: '', qlik: '', notes: "Python/ML frameworks, notebooks, MLflow integration" },
+                        { name: "Feature Engineering Pipeline", weight: 3, db: '', qlik: '', notes: "Data preparation and transformation workflows" },
                         { name: "Advanced Analytics (Statistical/Predictive)", weight: 3, db: '', qlik: '', notes: "Built-in ML capabilities, AutoML" },
-                        { name: "Conversational AI / NLQ", weight: 3, db: '', qlik: '', notes: "Genie assessment ongoing" },
+                        { name: "Conversational AI / NLQ", weight: 3, db: '', qlik: '', notes: "Natural-language interface that lets users query and explore data conversationally" },
                         { name: "Real-time ML Inference", weight: 3, db: '', qlik: '', notes: "Streaming + model serving capabilities" }
                     ]
                 },
@@ -133,15 +133,12 @@
                     name: "Operations & Scalability",
                     key: "operations",
                     items: [
-                        { name: "iFrame Embedding Capabilities", weight: 3, db: '', qlik: '', notes: "Both support embedding, Qlik more mature" },
-                        { name: "Infrastructure/Alerts/DR", weight: 3, db: '', qlik: '', notes: "Enterprise-level features, cloud-native advantage" },
-                        { name: "User Authentication & SSO", weight: 3, db: '', qlik: '', notes: "Unity Catalog integration tested" },
-                        { name: "Export Capabilities", weight: 3, db: '', qlik: '', notes: "Standard formats, Qlik has more options" },
-                        { name: "Multi-tenancy Support", weight: 3, db: '', qlik: '', notes: "Workspace isolation capabilities" },
-                        { name: "Monitoring & Observability", weight: 3, db: '', qlik: '', notes: "Built-in monitoring, query profiling" },
-                        { name: "SLA/Latency Guarantees", weight: 3, db: '', qlik: '', notes: "Service level commitments and performance SLAs" },
-                        { name: "Run-time Limits & Thresholds", weight: 3, db: '', qlik: '', notes: "Query timeouts, resource limits" },
-                        { name: "Maintenance/Version Management", weight: 3, db: '', qlik: '', notes: "Patching, upgrades, version control" }
+                        { name: "Embedding & Integration", weight: 3, db: '', qlik: '', notes: "Ability to embed dashboards or analytics views within external web applications or portals" },
+                        { name: "Authentication & Access Control", weight: 3, db: '', qlik: '', notes: "Support for secure user authentication, single sign-on, and integration with enterprise identity providers" },
+                        { name: "Monitoring & Observability", weight: 3, db: '', qlik: '', notes: "Built-in monitoring, performance tracking, and diagnostic visibility across workloads" },
+                        { name: "Performance & SLA Management", weight: 3, db: '', qlik: '', notes: "Tools and metrics to ensure runtime reliability, responsiveness, and adherence to performance targets" },
+                        { name: "Scalability & Multi-tenancy", weight: 3, db: '', qlik: '', notes: "Ability to scale with user and data volume growth while maintaining isolated environments or workspaces" },
+                        { name: "Maintenance & Lifecycle Management", weight: 3, db: '', qlik: '', notes: "Processes for upgrades, version control, and ongoing system reliability (alerts, backup, and disaster recovery)" }
                     ]
                 },
                 {
@@ -160,8 +157,10 @@
                     key: "product",
                     items: [
                         { name: "Product Vision Alignment", weight: 3, db: '', qlik: '', notes: "Long-term product roadmap alignment with needs" },
-                        { name: "Product Momentum", weight: 3, db: '', qlik: '', notes: "Market adoption, innovation velocity, ecosystem growth" },
-                        { name: "Hireability", weight: 3, db: '', qlik: '', notes: "Ability to hire talent with platform expertise" }
+                        { name: "Market Momentum", weight: 3, db: '', qlik: '', notes: "Growth in adoption, innovation cadence, and investment" },
+                        { name: "Ecosystem & Partner Support", weight: 3, db: '', qlik: '', notes: "Breadth of integrations, partner tools, and marketplace extensions" },
+                        { name: "Roadmap Transparency", weight: 3, db: '', qlik: '', notes: "Clarity and predictability of roadmap, release cadence, and communication" },
+                        { name: "Talent Availability", weight: 3, db: '', qlik: '', notes: "Availability and hiring ease of experienced practitioners and developers" }
                     ]
                 }
             ]);
@@ -313,7 +312,7 @@
             }, [categories, metaWeights]);
 
             return (
-                <div className="w-full max-w-7xl mx-auto p-6">
+                <div className="w-full max-w-7xl mx_auto p-6">
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                         <div className="flex items-center justify-between mb-2">
                             <h1 className="text-3xl font-bold text-gray-900">Databricks vs Qlik Evaluation</h1>
@@ -423,7 +422,7 @@
                         const catResult = results.categories[catIdx];
                         return (
                             <div key={category.key} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                                <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center justify_between mb-4">
                                     <div>
                                         <h2 className="text-xl font-bold text-gray-900">{category.name}</h2>
                                         <p className="text-sm text-gray-600">
@@ -681,4 +680,3 @@
     </script>
 </body>
 </html>
-

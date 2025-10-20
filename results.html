@@ -32,47 +32,53 @@
       { key: 'product',        label: 'Product & Market' },
     ];
 
-    // One-line row component (label + slider + DB/Qlik + avg multiplier + button)
+    // One-line row component (label + DB/Qlik + slider + avg multiplier + button)
     function CategoryOneLineRow({ row, onDetails }) {
       const mean = Number(row.meanMultiplier) || 0;
       const trackMax = 2; // visual track 0..2; diamond clamps visually but number shows true value
       const clamped = Math.max(0, Math.min(trackMax, mean));
       const pct = (clamped / trackMax) * 100;
+      
+      const dbScore = row.meanDB;
+      const qlikScore = row.meanQlik;
+      const winner = dbScore > qlikScore ? 'db' : qlikScore > dbScore ? 'qlik' : 'tie';
 
       return (
         <div className="flex items-center gap-4 py-2">
           {/* label */}
-          <div className="w-[260px] text-gray-900 font-medium truncate" title={row.label}>{row.label}</div>
+          <div className="w-[280px] text-gray-900 font-medium truncate" title={row.label}>{row.label}</div>
 
-          {/* slider */}
-          <div className="flex-1 flex items-center gap-2">
-            <span className="text-xs text-gray-500 w-6 text-right">0.0</span>
-            <div className="relative h-2 flex-1 rounded bg-gray-200">
-              {/* midpoint tick @ 1.0 */}
-              <div className="absolute top-1/2 -translate-y-1/2 left-1/2 w-0.5 h-4 bg-gray-400 rounded" />
-              {/* marker */}
-              <div className="absolute -top-1.5" style={{ left: `calc(${pct}% - 6px)` }}>
-                <div className="w-3 h-3 rotate-45 bg-blue-600 rounded-sm shadow" />
-              </div>
-            </div>
-            <span className="text-xs text-gray-500 w-6">2.0</span>
-          </div>
-
-          {/* numeric mean (true value, not capped) */}
-          <div className="w-14 text-right font-semibold tabular-nums" title="Average multiplier">
-            {mean.toFixed(2)}
-          </div>
-
-          {/* DB/Qlik averages */}
-          <div className="w-16 text-right font-semibold tabular-nums" style={{color:'#2563EB'}} title="DB Avg">
+          {/* DB/Qlik averages with winner highlighting */}
+          <div className={`w-20 text-right font-bold tabular-nums px-2 py-1 rounded ${winner === 'db' ? 'bg-blue-100' : ''}`} 
+               style={{color: winner === 'db' ? '#2563EB' : '#6B7280'}} title="DB Avg">
             {row.meanDB.toFixed(2)}
           </div>
-          <div className="w-16 text-right font-semibold tabular-nums" style={{color:'#1E40AF'}} title="Qlik Avg">
+          <div className={`w-20 text-right font-bold tabular-nums px-2 py-1 rounded ${winner === 'qlik' ? 'bg-blue-100' : ''}`} 
+               style={{color: winner === 'qlik' ? '#1E40AF' : '#6B7280'}} title="Qlik Avg">
             {row.meanQlik.toFixed(2)}
           </div>
 
+          {/* slider - smaller and to the right */}
+          <div className="w-32 flex items-center gap-1">
+            <span className="text-xs text-gray-400 w-5 text-right">0</span>
+            <div className="relative h-2 flex-1 rounded bg-gray-200">
+              {/* midpoint tick @ 1.0 */}
+              <div className="absolute top-1/2 -translate-y-1/2 left-1/2 w-0.5 h-3 bg-gray-400 rounded" />
+              {/* marker */}
+              <div className="absolute -top-1" style={{ left: `calc(${pct}% - 4px)` }}>
+                <div className="w-2 h-2 rotate-45 bg-blue-600 rounded-sm shadow" />
+              </div>
+            </div>
+            <span className="text-xs text-gray-400 w-5">2</span>
+          </div>
+
+          {/* numeric mean (true value, not capped) */}
+          <div className="w-14 text-center font-semibold tabular-nums text-gray-700" title="Average multiplier">
+            {mean.toFixed(2)}
+          </div>
+
           {/* button */}
-          <div className="w-36 text-right">
+          <div className="w-32 text-right">
             <button
               onClick={() => onDetails(row)}
               className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
@@ -272,27 +278,27 @@
             </div>
 
             {/* SINGLE combined section – one line per category */}
-            <div className="mb-8 bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <div className="flex items-center gap-4 text-xs text-gray-500 mb-1">
-                <div className="w-[260px]"></div>
-                <div className="flex-1 flex justify-between">
-                  <span>0.0</span>
-                  <span>2.0</span>
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">Category Performance Overview</h2>
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div className="flex items-center gap-4 text-xs text-gray-500 mb-1">
+                  <div className="w-[280px]">Category</div>
+                  <div className="w-20 text-right" style={{color:'#2563EB'}}>DB Avg</div>
+                  <div className="w-20 text-right" style={{color:'#1E40AF'}}>Qlik Avg</div>
+                  <div className="w-32 text-center">Multiplier</div>
+                  <div className="w-14 text-center">Avg</div>
+                  <div className="w-32"></div>
                 </div>
-                <div className="w-14 text-right">Avg&nbsp;Mult</div>
-                <div className="w-16 text-right" style={{color:'#2563EB'}}>DB&nbsp;Avg</div>
-                <div className="w-16 text-right" style={{color:'#1E40AF'}}>Qlik&nbsp;Avg</div>
-                <div className="w-36"></div>
-              </div>
 
-              <div className="space-y-2">
-                {categoryAgg.map(row => (
-                  <CategoryOneLineRow key={row.key} row={row} onDetails={openCategoryDetails} />
-                ))}
-              </div>
+                <div className="space-y-2">
+                  {categoryAgg.map(row => (
+                    <CategoryOneLineRow key={row.key} row={row} onDetails={openCategoryDetails} />
+                  ))}
+                </div>
 
-              <div className="mt-2 text-xs text-gray-500">
-                Track scaled 0–2 for relative comparison; numeric value shows true mean (values &gt;2 are capped visually).
+                <div className="mt-2 text-xs text-gray-500">
+                  Higher scores highlighted; multiplier track scaled 0–2 (values &gt;2 capped visually).
+                </div>
               </div>
             </div>
 
@@ -301,44 +307,47 @@
                 No submissions yet. Share your evaluation form to start collecting responses!
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b-2 border-gray-300 bg-gray-50">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
-                      <th className="text-center py-3 px-4 font-semibold" style={{color: '#2563EB'}}>DB Score</th>
-                      <th className="text-center py-3 px-4 font-semibold" style={{color: '#1E40AF'}}>Qlik Score</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700">Date</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700">Details</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {submissions.map((submission, idx) => {
-                      const dbScore = parseFloat(submission.final_scores?.databricks || 0);
-                      const qlikScore = parseFloat(submission.final_scores?.qlik || 0);
-                      const date = new Date(submission.submission_date || submission._date).toLocaleDateString();
-                      return (
-                        <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
-                          <td className="py-3 px-4 text-gray-900">{submission.submitter_name}</td>
-                          <td className="py-3 px-4 text-gray-600">{submission.submitter_email}</td>
-                          <td className="py-3 px-4 text-center font-semibold" style={{color: '#2563EB'}}>{dbScore.toFixed(2)}</td>
-                          <td className="py-3 px-4 text-center font-semibold" style={{color: '#1E40AF'}}>{qlikScore.toFixed(2)}</td>
-                          <td className="py-3 px-4 text-center text-gray-600 text-sm">{date}</td>
-                          <td className="py-3 px-4 text-center">
-                            <button
-                              onClick={() => setSelectedSubmission(submission)}
-                              className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-                            >
-                              View Details
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <h2 className="text-xl font-bold text-gray-900 mb-3">Individual Submissions</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b-2 border-gray-300 bg-gray-50">
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
+                        <th className="text-center py-3 px-4 font-semibold" style={{color: '#2563EB'}}>DB Score</th>
+                        <th className="text-center py-3 px-4 font-semibold" style={{color: '#1E40AF'}}>Qlik Score</th>
+                        <th className="text-center py-3 px-4 font-semibold text-gray-700">Date</th>
+                        <th className="text-center py-3 px-4 font-semibold text-gray-700">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {submissions.map((submission, idx) => {
+                        const dbScore = parseFloat(submission.final_scores?.databricks || 0);
+                        const qlikScore = parseFloat(submission.final_scores?.qlik || 0);
+                        const date = new Date(submission.submission_date || submission._date).toLocaleDateString();
+                        return (
+                          <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
+                            <td className="py-3 px-4 text-gray-900">{submission.submitter_name}</td>
+                            <td className="py-3 px-4 text-gray-600">{submission.submitter_email}</td>
+                            <td className="py-3 px-4 text-center font-semibold" style={{color: '#2563EB'}}>{dbScore.toFixed(2)}</td>
+                            <td className="py-3 px-4 text-center font-semibold" style={{color: '#1E40AF'}}>{qlikScore.toFixed(2)}</td>
+                            <td className="py-3 px-4 text-center text-gray-600 text-sm">{date}</td>
+                            <td className="py-3 px-4 text-center">
+                              <button
+                                onClick={() => setSelectedSubmission(submission)}
+                                className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                              >
+                                View Details
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
 
@@ -383,7 +392,6 @@
                         <th className="text-center py-2 px-3 font-semibold text-gray-700">Avg Weight</th>
                         <th className="text-center py-2 px-3 font-semibold" style={{color:'#2563EB'}}>Avg DB Score</th>
                         <th className="text-center py-2 px-3 font-semibold" style={{color:'#1E40AF'}}>Avg Qlik Score</th>
-                        <th className="text-center py-2 px-3 font-semibold text-gray-700">Diff</th>
                         <th className="text-center py-2 px-3 font-semibold text-gray-700">Responses</th>
                       </tr>
                     </thead>
@@ -395,16 +403,13 @@
                           <tr key={i} className="border-b border-gray-200 hover:bg-gray-50">
                             <td className="py-2 px-3 text-gray-900">{feat.feature}</td>
                             <td className="py-2 px-3 text-center text-gray-600">{feat.avgWeight.toFixed(1)}</td>
-                            <td className={`py-2 px-3 text-center font-semibold ${winner === 'db' ? 'bg-blue-50' : ''}`} 
+                            <td className={`py-2 px-3 text-center font-semibold ${winner === 'db' ? 'bg-blue-100' : ''}`} 
                                 style={{color: winner === 'db' ? '#2563EB' : '#374151'}}>
                               {feat.avgDB.toFixed(2)}
                             </td>
-                            <td className={`py-2 px-3 text-center font-semibold ${winner === 'qlik' ? 'bg-blue-50' : ''}`} 
+                            <td className={`py-2 px-3 text-center font-semibold ${winner === 'qlik' ? 'bg-blue-100' : ''}`} 
                                 style={{color: winner === 'qlik' ? '#1E40AF' : '#374151'}}>
                               {feat.avgQlik.toFixed(2)}
-                            </td>
-                            <td className="py-2 px-3 text-center text-gray-700">
-                              {diff > 0 ? '+' : ''}{diff.toFixed(2)}
                             </td>
                             <td className="py-2 px-3 text-center text-gray-600">{feat.responseCount}</td>
                           </tr>

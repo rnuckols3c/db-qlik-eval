@@ -99,6 +99,9 @@
 
       const [selectedSubmission, setSelectedSubmission] = useState(null);  // individual response modal
       const [catDetails, setCatDetails] = useState(null);                   // category details modal
+      
+      const [categoryOverviewExpanded, setCategoryOverviewExpanded] = useState(true);
+      const [individualSubmissionsExpanded, setIndividualSubmissionsExpanded] = useState(true);
 
       useEffect(() => { fetchSubmissions(); }, []);
 
@@ -281,26 +284,42 @@
 
             {/* SINGLE combined section – one line per category */}
             <div className="mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-3">Category Overview</h2>
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <div className="flex items-center gap-6 text-xs text-gray-500 mb-2 font-medium">
-                  <div className="w-[320px]">Category</div>
-                  <div className="w-24 text-center" style={{color:'#2563EB'}}>DB Avg</div>
-                  <div className="w-24 text-center" style={{color:'#1E40AF'}}>Qlik Avg</div>
-                  <div className="flex-1 text-center">Category Multiplier</div>
-                  <div className="w-32"></div>
-                </div>
-
-                <div className="space-y-2">
-                  {categoryAgg.map(row => (
-                    <CategoryOneLineRow key={row.key} row={row} onDetails={openCategoryDetails} />
-                  ))}
-                </div>
-
-                <div className="mt-3 text-xs text-gray-500">
-                  Higher scores highlighted; multiplier track scaled 0–2 (values &gt;2 capped visually).
-                </div>
+              <div 
+                className="flex items-center justify-between cursor-pointer mb-3 hover:bg-gray-50 p-2 rounded -ml-2"
+                onClick={() => setCategoryOverviewExpanded(!categoryOverviewExpanded)}
+              >
+                <h2 className="text-xl font-bold text-gray-900">Category Overview</h2>
+                <svg 
+                  className={`h-6 w-6 text-gray-600 transition-transform ${categoryOverviewExpanded ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </div>
+              
+              {categoryOverviewExpanded && (
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <div className="flex items-center gap-6 text-xs text-gray-500 mb-2 font-medium">
+                    <div className="w-[320px]">Category</div>
+                    <div className="w-24 text-center" style={{color:'#2563EB'}}>DB Avg</div>
+                    <div className="w-24 text-center" style={{color:'#1E40AF'}}>Qlik Avg</div>
+                    <div className="flex-1 text-center">Category Multiplier</div>
+                    <div className="w-32"></div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {categoryAgg.map(row => (
+                      <CategoryOneLineRow key={row.key} row={row} onDetails={openCategoryDetails} />
+                    ))}
+                  </div>
+
+                  <div className="mt-3 text-xs text-gray-500">
+                    Higher scores highlighted; multiplier track scaled 0–2 (values &gt;2 capped visually).
+                  </div>
+                </div>
+              )}
             </div>
 
             {submissions.length === 0 ? (
@@ -309,45 +328,61 @@
               </div>
             ) : (
               <>
-                <h2 className="text-xl font-bold text-gray-900 mb-3">Individual Submissions</h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b-2 border-gray-300 bg-gray-50">
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
-                        <th className="text-center py-3 px-4 font-semibold" style={{color: '#2563EB'}}>DB Score</th>
-                        <th className="text-center py-3 px-4 font-semibold" style={{color: '#1E40AF'}}>Qlik Score</th>
-                        <th className="text-center py-3 px-4 font-semibold text-gray-700">Date</th>
-                        <th className="text-center py-3 px-4 font-semibold text-gray-700">Details</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {submissions.map((submission, idx) => {
-                        const dbScore = parseFloat(submission.final_scores?.databricks || 0);
-                        const qlikScore = parseFloat(submission.final_scores?.qlik || 0);
-                        const date = new Date(submission.submission_date || submission._date).toLocaleDateString();
-                        return (
-                          <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
-                            <td className="py-3 px-4 text-gray-900">{submission.submitter_name}</td>
-                            <td className="py-3 px-4 text-gray-600">{submission.submitter_email}</td>
-                            <td className="py-3 px-4 text-center font-semibold" style={{color: '#2563EB'}}>{dbScore.toFixed(2)}</td>
-                            <td className="py-3 px-4 text-center font-semibold" style={{color: '#1E40AF'}}>{qlikScore.toFixed(2)}</td>
-                            <td className="py-3 px-4 text-center text-gray-600 text-sm">{date}</td>
-                            <td className="py-3 px-4 text-center">
-                              <button
-                                onClick={() => setSelectedSubmission(submission)}
-                                className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-                              >
-                                View Details
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div 
+                  className="flex items-center justify-between cursor-pointer mb-3 hover:bg-gray-50 p-2 rounded -ml-2"
+                  onClick={() => setIndividualSubmissionsExpanded(!individualSubmissionsExpanded)}
+                >
+                  <h2 className="text-xl font-bold text-gray-900">Individual Submissions</h2>
+                  <svg 
+                    className={`h-6 w-6 text-gray-600 transition-transform ${individualSubmissionsExpanded ? 'rotate-180' : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </div>
+                
+                {individualSubmissionsExpanded && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b-2 border-gray-300 bg-gray-50">
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
+                          <th className="text-center py-3 px-4 font-semibold" style={{color: '#2563EB'}}>DB Score</th>
+                          <th className="text-center py-3 px-4 font-semibold" style={{color: '#1E40AF'}}>Qlik Score</th>
+                          <th className="text-center py-3 px-4 font-semibold text-gray-700">Date</th>
+                          <th className="text-center py-3 px-4 font-semibold text-gray-700">Details</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {submissions.map((submission, idx) => {
+                          const dbScore = parseFloat(submission.final_scores?.databricks || 0);
+                          const qlikScore = parseFloat(submission.final_scores?.qlik || 0);
+                          const date = new Date(submission.submission_date || submission._date).toLocaleDateString();
+                          return (
+                            <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
+                              <td className="py-3 px-4 text-gray-900">{submission.submitter_name}</td>
+                              <td className="py-3 px-4 text-gray-600">{submission.submitter_email}</td>
+                              <td className="py-3 px-4 text-center font-semibold" style={{color: '#2563EB'}}>{dbScore.toFixed(2)}</td>
+                              <td className="py-3 px-4 text-center font-semibold" style={{color: '#1E40AF'}}>{qlikScore.toFixed(2)}</td>
+                              <td className="py-3 px-4 text-center text-gray-600 text-sm">{date}</td>
+                              <td className="py-3 px-4 text-center">
+                                <button
+                                  onClick={() => setSelectedSubmission(submission)}
+                                  className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                                >
+                                  View Details
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </>
             )}
           </div>

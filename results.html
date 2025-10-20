@@ -251,43 +251,51 @@
               </div>
             </div>
 
-            {/* Category Multiplier Averages (0..2 track, shows real mean at right) */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Category Multiplier Averages</h3>
-              <div className="space-y-3">
-                {categoryAgg.map((row) => (
-                  <MultiplierRow key={row.key} label={row.label} mean={row.meanMultiplier} />
-                ))}
-              </div>
-              <div className="mt-2 text-xs text-gray-500">Track scaled 0–2 for relative comparison; numeric value shows true mean (values &gt;2 are capped visually).</div>
-            </div>
-
-            {/* Category Score Averages */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Category Score Averages</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b-2 border-gray-300 bg-gray-50">
-                      <th className="text-left py-2 px-3 font-semibold text-gray-700">Category</th>
-                      <th className="text-center py-2 px-3 font-semibold" style={{color:'#2563EB'}}>DB Avg</th>
-                      <th className="text-center py-2 px-3 font-semibold" style={{color:'#1E40AF'}}>Qlik Avg</th>
-                      <th className="text-center py-2 px-3 font-semibold text-gray-700">Avg Multiplier</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {categoryAgg.map((r) => (
-                      <tr key={r.key} className="border-b border-gray-200">
-                        <td className="py-2 px-3">{r.label}</td>
-                        <td className="py-2 px-3 text-center" style={{color:'#2563EB'}}>{r.meanDB.toFixed(2)}</td>
-                        <td className="py-2 px-3 text-center" style={{color:'#1E40AF'}}>{r.meanQlik.toFixed(2)}</td>
-                        <td className="py-2 px-3 text-center text-gray-700">{r.meanMultiplier.toFixed(2)}</td>
-                      </tr>
+            {/* Collapsible Category Averages Section */}
+            <Disclosure title="Category Averages (All Submissions)" defaultOpen={true}>
+              <div className="space-y-6">
+                {/* Category Multiplier Averages */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Category Multiplier Averages</h3>
+                  <div className="space-y-3">
+                    {categoryAgg.map((row) => (
+                      <MultiplierRow key={row.key} label={row.label} mean={row.meanMultiplier} />
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    Track scaled 0–2 for relative comparison; numeric value shows true mean (values &gt;2 are capped visually).
+                  </div>
+                </div>
+            
+                {/* Category Score Averages */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Category Score Averages</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b-2 border-gray-300 bg-gray-50">
+                          <th className="text-left py-2 px-3 font-semibold text-gray-700">Category</th>
+                          <th className="text-center py-2 px-3 font-semibold" style={{color:'#2563EB'}}>DB Avg</th>
+                          <th className="text-center py-2 px-3 font-semibold" style={{color:'#1E40AF'}}>Qlik Avg</th>
+                          <th className="text-center py-2 px-3 font-semibold text-gray-700">Avg Multiplier</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {categoryAgg.map((r) => (
+                          <tr key={r.key} className="border-b border-gray-200">
+                            <td className="py-2 px-3">{r.label}</td>
+                            <td className="py-2 px-3 text-center" style={{color:'#2563EB'}}>{r.meanDB.toFixed(2)}</td>
+                            <td className="py-2 px-3 text-center" style={{color:'#1E40AF'}}>{r.meanQlik.toFixed(2)}</td>
+                            <td className="py-2 px-3 text-center text-gray-700">{r.meanMultiplier.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-            </div>
+            </Disclosure>
+
 
             {/* Feature Averages per Category */}
             <div className="space-y-4 mb-8">
